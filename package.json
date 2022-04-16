@@ -1,0 +1,19 @@
+{
+  "name": "instagram-clone",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently \"cd backend && npm run dev\" \"cd client && npm start\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/cookie-parser": "^1.4.2",
+    "concurrently": "^6.4.0"
+  },
+  "dependencies": {
+    "cookie-parser": "^1.4.6"
+  }
+}
