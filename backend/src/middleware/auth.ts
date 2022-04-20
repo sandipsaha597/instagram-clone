@@ -11,7 +11,10 @@ interface ModifiedRequest extends Request {
 
 const auth = (req: Request, res: Response, next: NextFunction) => {
   try {
-    const token = req.cookies.token
+    const token =
+      req.cookies.token ||
+      req.body.token ||
+      req.header('Authorization')?.replace('Bearer ', '')
 
     if (!token) {
       return res.status(401).send('Unauthorized')
@@ -29,7 +32,7 @@ const auth = (req: Request, res: Response, next: NextFunction) => {
     next()
   } catch (e) {
     console.log(e)
-    res.send('failed')
+    res.send('invalid token')
   }
 }
 
