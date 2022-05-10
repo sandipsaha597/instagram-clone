@@ -10,29 +10,3 @@ export const getFileSize = (file: string) => {
     return 1000000000000000
   }
 }
-
-export const getFileType = (file: string) => {
-  try {
-    const firstLetterAfterComma = file[file.indexOf(',') + 1]
-    switch (firstLetterAfterComma) {
-      case '/':
-        return 'jpg/jpeg'
-      case 'i':
-        return 'png'
-      case 'R':
-        return 'gif'
-      case 'U':
-        return 'webp'
-      case 'A':
-        return 'mp4'
-      case 'P':
-        return 'svg'
-      case 'J':
-        return 'pdf'
-      default:
-        return 'unknown'
-    }
-  } catch (err) {
-    return 'unknown'
-  }
-}

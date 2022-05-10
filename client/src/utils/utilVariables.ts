@@ -1,0 +1,2 @@
+export const DOMAIN = 'http://localhost:4000'
+export const border = '1px solid rgb(219, 219, 219)'

@@ -32,7 +32,7 @@ const auth = (req: Request, res: Response, next: NextFunction) => {
     next()
   } catch (e) {
     console.log(e)
-    res.send('invalid token')
+    res.status(401).send('invalid token')
   }
 }
 

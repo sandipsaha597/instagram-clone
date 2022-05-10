@@ -1,42 +1,34 @@
 import mongoose from 'mongoose'
 
-const commentSchema = new mongoose.Schema({
-  comment: {
-    type: String,
-    required: true,
-  },
-  by: {
-    type: String,
-    required: true,
-  },
-  likes: {
-    type: Number,
-    default: 0,
-  },
-})
-
 const postSchema = new mongoose.Schema({
   postBy: {
-    username: String,
+    username: { type: String, required: true },
   },
   caption: {
     type: String,
-    required: true,
+    // required: true,
+    default: '',
   },
   likes: {
     type: Number,
     default: 0,
   },
   hashtags: [String],
-  image: {
-    type: String,
-    default: '',
-  },
-  comments: [
+  images: [
     {
-      data: commentSchema,
-      replies: [commentSchema],
+      url: {
+        type: String,
+        required: true,
+      },
+      publicId: {
+        type: String,
+        required: true,
+      },
     },
   ],
+  commentCount: {
+    type: Number,
+    default: 0,
+  },
 })
 export default mongoose.model('Post', postSchema)

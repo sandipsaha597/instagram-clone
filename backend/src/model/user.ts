@@ -11,7 +11,20 @@ const userSchema = new mongoose.Schema({
     required: true,
   },
   bio: String,
-  profilePicture: String,
+  profilePicture: {
+    withVersion: {
+      type: String,
+      required: true,
+      default:
+        'https://res.cloudinary.com/dbevmtl8a/image/upload/v1650475415/users/instagram-clone-default-dp_qilu7c',
+    },
+    withoutVersion: {
+      type: String,
+      required: true,
+      default:
+        'https://res.cloudinary.com/dbevmtl8a/image/upload/v1650475415/users/instagram-clone-default-dp_qilu7c',
+    },
+  },
   email: {
     type: String,
     unique: true,
@@ -23,6 +36,14 @@ const userSchema = new mongoose.Schema({
   },
   token: {
     type: String,
+  },
+  followerCount: {
+    type: Number,
+    default: 0,
+  },
+  followingCount: {
+    type: Number,
+    default: 0,
   },
 })
 

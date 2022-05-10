@@ -1,26 +1,45 @@
-import React from 'react'
-import logo from './logo.svg'
+import React, { useRef } from 'react'
+import styled from 'styled-components'
 import './App.css'
-
-const App: React.FC = () => {
+import axios from 'axios'
+import { Button } from './atoms/Buttons/Buttons'
+import { useNavigate } from 'react-router-dom'
+import { DOMAIN } from './utils/utilVariables'
+import Navbar from './molecules/Navbar'
+//@ts-ignore
+const App: any = ({ setUserLoggedIn, userDetails }) => {
   return (
     <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+      <Navbar setUserLoggedIn={setUserLoggedIn} userDetails={userDetails} />
+      Dashboard
     </div>
   )
 }
 
 export default App
+
+export const Or: React.FC = () => {
+  return (
+    <Wrapper>
+      <Line></Line>
+      <OrText>OR</OrText>
+      <Line></Line>
+    </Wrapper>
+  )
+}
+const Line = styled.div`
+  border-top: 1px solid rgb(219, 219, 219);
+  width: 100%;
+`
+
+const Wrapper = styled.div`
+  display: flex;
+  align-items: center;
+  margin: 10px 0 18px;
+`
+const OrText = styled.div`
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0 18px;
+  color: rgb(142, 142, 142);
+`
