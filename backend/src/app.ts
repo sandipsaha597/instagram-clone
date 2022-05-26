@@ -9,16 +9,23 @@ import cors from 'cors'
 import cookieParser from 'cookie-parser'
 import User from './model/user'
 import Post from './model/post'
-import auth from './middleware/auth'
-import { cookieOptions } from './utils/utilVariables'
+import { auth, authInSocketIO } from './middleware/auth'
+import {
+  cookieOptions,
+  corsOptions,
+  defaultProfilePicture,
+} from './utils/utilVariables'
 import Comment from './model/comment'
 import Like from './model/like'
 import { isValidObjectId } from 'mongoose'
 import Chat from './model/chat'
 import Follow from './model/follow'
+import Inbox from './model/inbox'
+import { validateRequestBody } from './utils/utilFunctions'
+import { Server } from 'socket.io'
 const app: Application = express()
 
-app.use(cors({ origin: 'http://localhost:3000', credentials: true }))
+app.use(cors(corsOptions))
 app.use(express.json({ limit: '20mb' }))
 app.use(cookieParser())
 
@@ -30,6 +37,72 @@ cloudinaryV2.config({
 // app.get('/check-auth', auth, async (req: Request, res: Response) => {
 //   if(req.user)
 // })
+
+//socket.io
+const state: any = {}
+const io = new Server(4001, { cors: corsOptions })
+io.use(authInSocketIO)
+io.on('connection', (socket) => {
+  // @ts-ignore
+  const userId = socket.jwtPayload._id
+  state[userId] = socket.id
+  console.log(state)
+  socket.on('message', async (data) => {
+    try {
+      const { inboxId, message } = data
+      const fieldsValid = validateRequestBody({
+        _id: inboxId,
+        message,
+      })
+      if (fieldsValid !== true) {
+        return socket.emit('error', {
+          type: 'messageFailed',
+          data,
+          errorMessage: fieldsValid,
+        })
+      }
+
+      const inbox = await Inbox.findOne({ _id: inboxId })
+
+      if (inbox === null) {
+        return socket.emit('error', {
+          type: 'messageFailed',
+          data,
+          errorMessage: `Invalid inboxId ${inboxId}`,
+        })
+      }
+      const isUserAParticipant = inbox.participants.find(
+        // @ts-ignore
+        (participant: any) => participant._id.toString() === userId
+      )
+
+      if (isUserAParticipant) {
+        const chat = await Chat.create({
+          //@ts-ignore
+          sentBy: userId,
+          sentTo: inboxId,
+          message,
+        })
+        inbox.participants.forEach((participant: any) => {
+          if (participant._id === userId) return
+          io.to(state[participant.id]).emit('message', {
+            type: 'messageReceived',
+            chat,
+          })
+        })
+
+        return
+      }
+      // return res.status(401).send('you are unauthorized to send this message')
+    } catch (error) {
+      console.error(error)
+      // res.status(500).send('failed')
+    }
+  })
+  socket.emit('chat', 'world')
+})
+// socket.io - end
+
 app.get('/', auth, async (req: Request, res: Response) => {
   // @ts-ignore
   if (!!req.searchUserBy && Object.keys(req.searchUserBy)) {
@@ -41,27 +114,6 @@ app.get('/', auth, async (req: Request, res: Response) => {
     res.status(204).clearCookie('token').send('hello')
   } else {
     res.status(401).send('wrong credentials')
-  }
-})
-app.get('/:username', async (req: Request, res: Response) => {
-  try {
-    const user = await User.findOne({ username: req.params.username })
-    let posts
-    if (user) {
-      posts = await Post.find({
-        postBy: { username: req.params.username },
-      }).limit(20)
-    }
-    const userData = { ...user }
-    console.log(userData._doc)
-    const userDetails = {
-      ...userData._doc,
-      posts,
-    }
-    res.send(userDetails)
-  } catch (err) {
-    console.log(err)
-    res.send('failed')
   }
 })
 
@@ -136,12 +188,21 @@ app.post(
       const user = await User.create(tempUserObj)
 
       const { JWT_SECRET } = process.env
-      const token = jwt.sign({ username, email }, JWT_SECRET as string, {
-        expiresIn: '5d',
-      })
+      const token = jwt.sign(
+        {
+          username,
+          email,
+          _id: user._id,
+          name,
+          profilePicture: defaultProfilePicture,
+        },
+        JWT_SECRET as string,
+        {
+          expiresIn: '5d',
+        }
+      )
       user.token = token
       user.password = undefined
-      console.log(user)
       res.status(201).cookie('token', token, cookieOptions).send(user)
     } catch (e) {
       console.log(e)
@@ -161,11 +222,21 @@ app.post('/login', async (req: Request, res: Response) => {
 
     const searchUserBy = username ? { username } : { email }
     const user = await User.findOne(searchUserBy)
-    if (user && bcrypt.compare(password, user.password)) {
+    if (user && (await bcrypt.compare(password, user.password))) {
       const { JWT_SECRET } = process.env
-      const token = jwt.sign({ username, email }, JWT_SECRET as string, {
-        expiresIn: '5d',
-      })
+      const token = jwt.sign(
+        {
+          username,
+          email,
+          _id: user._id,
+          name: user.name,
+          profilePicture: user.profilePicture.withoutVersion,
+        },
+        JWT_SECRET as string,
+        {
+          expiresIn: '5d',
+        }
+      )
       user.password = undefined
 
       return res.status(200).cookie('token', token, cookieOptions).send(user)
@@ -248,7 +319,8 @@ app.post('/like', auth, async (req: Request, res: Response) => {
       likedBy: {
         //@ts-ignore
         username: req.searchUserBy.username,
-        profilePicture: 'fawe',
+        //@ts-ignore
+        profilePicture: req.jwtPayload.profilePicture,
       },
     })
     console.log(like)
@@ -310,7 +382,8 @@ app.post('/comment', auth, async (req: Request, res: Response) => {
     commentedBy: {
       // @ts-ignore
       username: req.searchUserBy.username,
-      profilePicture: 'fda',
+      // @ts-ignore
+      profilePicture: req.jwtPayload.profilePicture,
     },
   }
   if (resultType === 'comment') {
@@ -321,13 +394,108 @@ app.post('/comment', auth, async (req: Request, res: Response) => {
   res.send(commentResult)
 })
 
-app.post('/message', async (req: Request, res: Response) => {
-  const chat = await Chat.create({
-    sentBy: '6268f188adae94c27fe9fdc7',
-    sentTo: '62604742278fcc13683c6055',
-    message: 'keep working hard and dedicate yourself. Give your 100% always.',
+app.get('/inbox/:userId', auth, async (req: Request, res: Response) => {
+  const user = await User.findOne({ _id: req.params.userId })
+  if (!user) throw new Error('user does not exist')
+  let inbox = await Inbox.findOne({
+    //@ts-ignore
+    'participants._id': { $all: [req.jwtPayload._id, req.params.userId] },
+    participants: { $size: 2 },
   })
-  console.log(chat)
+  //@ts-ignore
+  if (inbox === null) {
+    inbox = await Inbox.create({
+      participants: [
+        {
+          //@ts-ignore
+          name: req.jwtPayload.name,
+          //@ts-ignore
+          profilePicture: req.jwtPayload.profilePicture,
+          //@ts-ignore
+          _id: req.jwtPayload._id,
+          //@ts-ignore
+          username: req.jwtPayload.username,
+        },
+        {
+          name: user.name,
+          profilePicture: user.profilePicture.withoutVersion,
+          _id: req.params.userId,
+          username: user.username,
+        },
+      ],
+      lastActivity: {
+        message: '',
+        messageStatus: 'sent',
+        //@ts-ignore
+        sentBy: req.jwtPayload._id,
+      },
+    })
+    return res.send({ inboxDetails: inbox, chats: [] })
+  }
+
+  const chats = await Chat.find({ sentTo: inbox._id })
+  res.send({ inboxDetails: inbox, chats })
+})
+app.get('/inboxes', auth, async (req: Request, res: Response) => {
+  const inboxes = await Inbox.find({
+    //@ts-ignore
+    participants: { $elemMatch: { _id: req.jwtPayload._id } },
+  })
+  res.send(inboxes)
+})
+// app.get('/')
+app.get('/chat/:inboxId', auth, async (req: Request, res: Response) => {
+  const inboxId = req.params.inboxId
+  const inbox = await Inbox.findOne({ _id: inboxId })
+  if (!inbox) return res.status(404).send(`invalid inboxId ${inboxId}`)
+  const isUserAParticipant = inbox.participants.find(
+    //@ts-ignore
+    (v: any) => v._id.toString() === req.jwtPayload._id
+  )
+  if (!isUserAParticipant)
+    return res
+      .status(401)
+      .send(
+        `you are not authorized to see chats of this inbox. inboxId: ${inboxId}`
+      )
+  const chats = await Chat.find({ sentTo: req.params.inboxId })
+  res.send(chats)
+})
+app.post('/message', auth, async (req: Request, res: Response) => {
+  try {
+    const { inboxId, message } = req.body
+    const fieldsValid = validateRequestBody({
+      _id: inboxId,
+      message,
+    })
+    if (fieldsValid !== true) {
+      return res.status(400).send(fieldsValid)
+    }
+
+    const inbox = await Inbox.findOne({ _id: inboxId })
+
+    if (inbox === null) {
+      return res.status(404).send(`Invalid inboxId ${inboxId}`)
+    }
+    const isUserAParticipant = inbox.participants.find(
+      // @ts-ignore
+      (participant: any) => participant._id.toString() === req.jwtPayload._id
+    )
+
+    if (isUserAParticipant) {
+      const chat = await Chat.create({
+        //@ts-ignore
+        sentBy: req.jwtPayload._id,
+        sentTo: inboxId,
+        message,
+      })
+      return res.send(chat)
+    }
+    return res.status(401).send('you are unauthorized to send this message')
+  } catch (error) {
+    console.error(error)
+    res.status(500).send('failed')
+  }
 })
 
 app.post('/follow-unfollow', auth, async (req: Request, res: Response) => {
@@ -404,5 +572,28 @@ const uploadImages = async (images: string[]) => {
     // res.send('error')
   }
 }
+
+app.get('/:username', async (req: Request, res: Response) => {
+  try {
+    const user = await User.findOne({ username: req.params.username })
+    let posts
+    if (user) {
+      posts = await Post.find({
+        postBy: { username: req.params.username },
+      }).limit(20)
+    }
+    const userData = { ...user }
+    delete userData.email
+    delete userData.password
+    const userDetails = {
+      ...userData._doc,
+      posts,
+    }
+    res.send(userDetails)
+  } catch (err) {
+    console.log(err)
+    res.send('failed')
+  }
+})
 
 export default app

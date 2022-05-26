@@ -1,5 +1,9 @@
 import mongoose from 'mongoose'
-import { newDate, stringRequired } from '../utils/utilVariables'
+import {
+  newDate,
+  objectIdRequired,
+  stringRequired,
+} from '../utils/utilVariables'
 
 const chatSchema = new mongoose.Schema({
   sentBy: {

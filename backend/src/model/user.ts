@@ -1,10 +1,8 @@
 import mongoose from 'mongoose'
+import { stringRequired } from '../utils/utilVariables'
 
 const userSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: true,
-  },
+  name: stringRequired,
   username: {
     type: String,
     unique: true,

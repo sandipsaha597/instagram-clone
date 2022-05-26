@@ -29,3 +29,8 @@ export const numberRequiredDefaultZero = {
 
 export const defaultProfilePicture =
   'https://res.cloudinary.com/dbevmtl8a/image/upload/v1650475415/users/instagram-clone-default-dp_qilu7c'
+
+export const corsOptions = {
+  origin: 'http://localhost:3000',
+  credentials: true,
+}

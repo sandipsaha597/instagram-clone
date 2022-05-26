@@ -1,4 +1,4 @@
-import React, { useRef } from 'react'
+import React, { useEffect, useRef } from 'react'
 import styled from 'styled-components'
 import './App.css'
 import axios from 'axios'
@@ -7,11 +7,16 @@ import { useNavigate } from 'react-router-dom'
 import { DOMAIN } from './utils/utilVariables'
 import Navbar from './molecules/Navbar'
 //@ts-ignore
-const App: any = ({ setUserLoggedIn, userDetails }) => {
+const App: any = ({ setUserLoggedIn, userDetails, setUserDetails }) => {
+  useEffect(() => {
+    return () => setUserDetails({})
+  }, [])
+  console.log(userDetails)
   return (
     <div className="App">
       <Navbar setUserLoggedIn={setUserLoggedIn} userDetails={userDetails} />
-      Dashboard
+      <h1>{userDetails.username}</h1>
+      <p>{userDetails._id}</p>
     </div>
   )
 }

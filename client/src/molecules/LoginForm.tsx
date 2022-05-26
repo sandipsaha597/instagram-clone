@@ -11,7 +11,7 @@ import { LinkText, Text1 } from '../atoms/Text/Texts'
 import { DOMAIN } from '../utils/utilVariables'
 
 //@ts-ignore
-const LoginForm = ({ setUserLoggedIn }) => {
+const LoginForm = ({ setUserLoggedIn, setUserDetails }) => {
   const loginFormValues = useRef({
     usernameOrEmail: '',
     password: '',
@@ -32,8 +32,8 @@ const LoginForm = ({ setUserLoggedIn }) => {
         `${DOMAIN}/login`,
         loginFormValues.current
       )
-      console.log(response)
       if (response.data._id) {
+        setUserDetails(response.data)
         setUserLoggedIn(true)
         navigate('/')
       }

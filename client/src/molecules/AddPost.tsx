@@ -47,7 +47,6 @@ const AddPost = ({ userDetails }: any) => {
         images: files,
       })
       setHeadingText('Post shared')
-      console.log(response)
     } catch (err) {
       console.log(err)
       alert('Failed to share post')

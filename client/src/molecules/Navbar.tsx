@@ -50,7 +50,7 @@ const Navbar = ({ setUserLoggedIn, userDetails }: any) => {
                   <ProfileImg src="https://res.cloudinary.com/dbevmtl8a/image/upload/w_24/v1650475415/users/instagram-clone-default-dp_qilu7c" />
                 </button>
                 <Modal
-                  setUserLoggedIn={setUserLoggedIn}
+                  setUserLoggedIn={(e: boolean) => setUserLoggedIn(e)}
                   hidden={modalHidden}
                   userDetails={userDetails}
                 />
@@ -109,7 +109,6 @@ const Modal = ({ hidden, setUserLoggedIn, userDetails }: any) => {
   const logout = async (e: any) => {
     e.preventDefault()
     const response = await axios.get(`${DOMAIN}/logout`)
-    console.log(response)
     navigate('/')
     setUserLoggedIn(false)
   }

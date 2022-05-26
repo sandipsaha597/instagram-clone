@@ -1,9 +1,10 @@
 import axios from 'axios'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import ReactDOM from 'react-dom'
 import { BrowserRouter, Route, Routes, useNavigate } from 'react-router-dom'
 import App from './App'
 import LoginForm from './molecules/LoginForm'
+import DirectMessagePage from './pages/DirectMessagePage'
 import ProfilePage from './pages/ProfilePage'
 import SignUpPage from './pages/SignUpPage'
 import reportWebVitals from './reportWebVitals'
@@ -14,21 +15,21 @@ const Index = () => {
   const [userLoggedIn, setUserLoggedIn] = useState<'unknown' | boolean>(
     'unknown'
   )
-  const [userDetails, setUserDetails] = useState({})
+  const [userDetails, setUserDetails] = useState<any>({})
+  const [chats, setChats] = useState<any>([])
+  const chatFetched = useRef<any>({})
   const navigate = useNavigate()
-  console.log({ userLoggedIn })
   const getUserDetails = async () => {
     try {
       const response = await axios.get(`${DOMAIN}/`)
       if (response.data._id) {
-        setUserLoggedIn(true)
         setUserDetails(response.data)
+        setUserLoggedIn(true)
       } else {
         setUserLoggedIn(false)
       }
-      console.log('response', response)
     } catch (err) {
-      console.log('err', err)
+      console.error(err)
       setUserLoggedIn(false)
       navigate('/')
     }
@@ -36,31 +37,72 @@ const Index = () => {
   useEffect(() => {
     getUserDetails()
   }, [])
+  if (!userDetails._id && userLoggedIn === 'unknown') {
+    return <h1>Loading...</h1>
+  }
   return (
     <Routes>
       <Route
         path="/"
         element={
-          userLoggedIn === 'unknown' ? (
-            <h1>Loading...</h1>
-          ) : userLoggedIn ? (
-            <App setUserLoggedIn={setUserLoggedIn} userDetails={userDetails} />
+          userLoggedIn ? (
+            <App
+              setUserLoggedIn={setUserLoggedIn}
+              userDetails={userDetails}
+              setUserDetails={(details: any) => setUserDetails(details)}
+            />
           ) : (
-            <LoginForm setUserLoggedIn={setUserLoggedIn} />
+            <LoginForm
+              setUserLoggedIn={setUserLoggedIn}
+              setUserDetails={(details: any) => setUserDetails(details)}
+            />
           )
         }
       ></Route>
       <Route
         path="/login"
-        element={<LoginForm setUserLoggedIn={setUserLoggedIn} />}
+        element={
+          <LoginForm
+            setUserLoggedIn={setUserLoggedIn}
+            setUserDetails={(details: any) => setUserDetails(details)}
+          />
+        }
       />
       <Route path="/signup" element={<SignUpPage />} />
       <Route path="/somepost" element={<>post some</>} />
       <Route
         path="/:username"
-        element={<ProfilePage userDetails={userDetails} />}
+        element={
+          <ProfilePage
+            userDetails={userDetails}
+            chatFetched={chatFetched}
+            chats={chats}
+            setChats={setChats}
+          />
+        }
       />
-      <Route path="/inbox" element={<h1>Inbox</h1>} />
+      <Route
+        path="/inbox"
+        element={
+          <DirectMessagePage
+            userDetails={userDetails}
+            chatFetched={chatFetched}
+            chats={chats}
+            setChats={setChats}
+          />
+        }
+      />
+      <Route
+        path="/inbox/:inboxId"
+        element={
+          <DirectMessagePage
+            userDetails={userDetails}
+            chatFetched={chatFetched}
+            chats={chats}
+            setChats={setChats}
+          />
+        }
+      />
       <Route path="*" element={<h1>Page does not exist</h1>} />
     </Routes>
   )

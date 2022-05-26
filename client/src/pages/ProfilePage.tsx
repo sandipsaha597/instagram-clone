@@ -1,27 +1,37 @@
 import { useEffect, useState } from 'react'
 import axios from 'axios'
 import styled from 'styled-components'
-import { Button2 } from '../atoms/Buttons/Buttons'
+import { Button, Button2 } from '../atoms/Buttons/Buttons'
 import Navbar from '../molecules/Navbar'
 import { transformCloudinaryImage } from '../utils/utilFunctions'
 import { DOMAIN } from '../utils/utilVariables'
 import { Container } from './../atoms/Boxes/Container'
-import { useParams } from 'react-router-dom'
-const ProfilePage = ({ userDetails }: any) => {
-  const [pageDetails, setPageDetails] = useState<any>()
+import { useNavigate, useParams } from 'react-router-dom'
+const ProfilePage = ({ userDetails, chatFetched, setChats }: any) => {
+  const [profileDetails, setProfileDetails] = useState<any>()
+
   const params = useParams()
+  const navigate = useNavigate()
   useEffect(() => {
     ;(async () => {
       try {
         const response = await axios.get(`${DOMAIN}/${params.username}`)
-        setPageDetails(response.data)
+        setProfileDetails(response.data)
       } catch (error) {
         console.log(error)
       }
     })()
   }, [params.username])
 
-  if (!pageDetails?.username) return <h1>Loading...</h1>
+  const getInbox = async () => {
+    const inbox = await axios.get(`${DOMAIN}/inbox/${profileDetails._id}`)
+    const inboxId = inbox.data.inboxDetails._id
+    chatFetched.current[inboxId] = true
+    setChats(inbox.data.chats)
+    navigate(`/inbox/${inboxId}`)
+  }
+
+  if (!profileDetails?.username) return <h1>Loading...</h1>
   return (
     <>
       <Navbar userDetails={userDetails} />
@@ -29,36 +39,43 @@ const ProfilePage = ({ userDetails }: any) => {
         <div className="img-box">
           <img
             src={transformCloudinaryImage(
-              pageDetails.profilePicture.withVersion,
+              profileDetails.profilePicture.withVersion,
               'w_150'
             )}
-            alt={pageDetails.username}
+            alt={profileDetails.username}
           />
         </div>
         <section>
           <div className="flex username-and-edit-profile">
-            <h2>{pageDetails.username}</h2>
-            <Button2>Edit Profile</Button2>
+            <h2>{profileDetails.username}</h2>
+            {userDetails.username === profileDetails.username ? (
+              <Button2>Edit Profile</Button2>
+            ) : (
+              <>
+                <Button2 onClick={getInbox}>Message</Button2>
+                <Button widthAuto>Follow</Button>
+              </>
+            )}
           </div>
           <ul className="flex posts-followers-following">
             <li>
-              <strong>{pageDetails.postCount || 0}</strong> posts
+              <strong>{profileDetails.postCount || 0}</strong> posts
             </li>
             <li>
-              <strong>{pageDetails.followerCount || 0}</strong> followers
+              <strong>{profileDetails.followerCount || 0}</strong> followers
             </li>
             <li>
-              <strong>{pageDetails.followingCount || 0}</strong> following
+              <strong>{profileDetails.followingCount || 0}</strong> following
             </li>
           </ul>
           <div>
-            <h3>{pageDetails.name}</h3>
-            <p className="bio">{pageDetails.bio}</p>
+            <h3>{profileDetails.name}</h3>
+            <p className="bio">{profileDetails.bio}</p>
           </div>
         </section>
       </StyledContainer>
       <Posts as="section">
-        {pageDetails.posts.map((v: any, i: number) => (
+        {profileDetails.posts.map((v: any, i: number) => (
           <div>
             <img src={v.images[0].url} alt={`post ${i}`} />
           </div>
@@ -95,6 +112,15 @@ const StyledContainer = styled(Container)`
   section .username-and-edit-profile,
   section ul {
     margin-bottom: 20px;
+  }
+  section .username-and-edit-profile {
+    ${Button2} {
+      margin-right: 8px;
+    }
+    ${Button} {
+      padding-left: 24px;
+      padding-right: 24px;
+    }
   }
   section > div:last-child {
     margin-bottom: 0px;

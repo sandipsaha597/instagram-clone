@@ -7,16 +7,19 @@ import {
 } from '../utils/utilVariables'
 
 const inboxSchema = new mongoose.Schema({
-  inboxOwner: objectIdRequired,
-  otherParticipantData: {
-    name: stringRequired,
-    profilePicture: stringRequired,
-    otherParticipant: objectIdRequired,
-  },
+  participants: [
+    {
+      name: stringRequired,
+      profilePicture: stringRequired,
+      _id: objectIdRequired,
+      username: stringRequired,
+    },
+  ],
   lastActivity: {
-    message: stringRequired,
+    message: String,
     timestamp: newDate,
     messageStatus: stringRequired,
+    sentBy: objectIdRequired,
   },
   unseenNumber: numberRequiredDefaultZero,
 })

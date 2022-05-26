@@ -1,9 +1,9 @@
 import React from 'react'
 import styled from 'styled-components'
 
-const UsernameWithImage = ({ image, username }: any) => {
+const UsernameWithImage = ({ image, username, className }: any) => {
   return (
-    <StyledUsernameWithImage>
+    <StyledUsernameWithImage className={className}>
       <img src={image} alt="" />
       <Username>{username}</Username>
     </StyledUsernameWithImage>

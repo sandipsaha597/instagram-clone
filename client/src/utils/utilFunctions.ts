@@ -1,3 +1,4 @@
+
 export const transformCloudinaryImage = (
   image: string,
   transformString: string
