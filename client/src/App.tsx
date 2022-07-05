@@ -10,8 +10,7 @@ import Navbar from './molecules/Navbar'
 const App: any = ({ setUserLoggedIn, userDetails, setUserDetails }) => {
   useEffect(() => {
     return () => setUserDetails({})
-  }, [])
-  console.log(userDetails)
+  }, [setUserDetails])
   return (
     <div className="App">
       <Navbar setUserLoggedIn={setUserLoggedIn} userDetails={userDetails} />

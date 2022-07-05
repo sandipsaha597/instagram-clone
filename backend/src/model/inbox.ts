@@ -20,8 +20,8 @@ const inboxSchema = new mongoose.Schema({
     timestamp: newDate,
     messageStatus: stringRequired,
     sentBy: objectIdRequired,
+    unseenNumber: numberRequiredDefaultZero,
   },
-  unseenNumber: numberRequiredDefaultZero,
 })
 
 export default mongoose.model('Inbox', inboxSchema)

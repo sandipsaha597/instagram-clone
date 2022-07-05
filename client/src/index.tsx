@@ -16,27 +16,26 @@ const Index = () => {
     'unknown'
   )
   const [userDetails, setUserDetails] = useState<any>({})
-  const [chats, setChats] = useState<any>([])
+  const [chats, setChats] = useState<any>({})
   const chatFetched = useRef<any>({})
   const navigate = useNavigate()
-  const getUserDetails = async () => {
-    try {
-      const response = await axios.get(`${DOMAIN}/`)
-      if (response.data._id) {
-        setUserDetails(response.data)
-        setUserLoggedIn(true)
-      } else {
-        setUserLoggedIn(false)
-      }
-    } catch (err) {
-      console.error(err)
-      setUserLoggedIn(false)
-      navigate('/')
-    }
-  }
   useEffect(() => {
-    getUserDetails()
-  }, [])
+    ;(async () => {
+      try {
+        const response = await axios.get(`${DOMAIN}/`)
+        if (response.data._id) {
+          setUserDetails(response.data)
+          setUserLoggedIn(true)
+        } else {
+          setUserLoggedIn(false)
+        }
+      } catch (err) {
+        console.error(err)
+        setUserLoggedIn(false)
+        navigate('/')
+      }
+    })()
+  }, [navigate])
   if (!userDetails._id && userLoggedIn === 'unknown') {
     return <h1>Loading...</h1>
   }
@@ -49,7 +48,7 @@ const Index = () => {
             <App
               setUserLoggedIn={setUserLoggedIn}
               userDetails={userDetails}
-              setUserDetails={(details: any) => setUserDetails(details)}
+              setUserDetails={setUserDetails}
             />
           ) : (
             <LoginForm

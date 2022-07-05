@@ -26,8 +26,12 @@ const ProfilePage = ({ userDetails, chatFetched, setChats }: any) => {
   const getInbox = async () => {
     const inbox = await axios.get(`${DOMAIN}/inbox/${profileDetails._id}`)
     const inboxId = inbox.data.inboxDetails._id
-    chatFetched.current[inboxId] = true
-    setChats(inbox.data.chats)
+    // chatFetched.current[inboxId] = true
+    setChats((chats: any) => {
+      chats.loading = false
+      chats[inboxId] = inbox.data.chats
+      return chats
+    })
     navigate(`/inbox/${inboxId}`)
   }
 

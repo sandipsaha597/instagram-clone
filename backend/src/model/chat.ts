@@ -16,6 +16,7 @@ const chatSchema = new mongoose.Schema({
   },
   message: stringRequired,
   timeStamp: newDate,
+  messageStatus: stringRequired,
 })
 
 export default mongoose.model('Chat', chatSchema)

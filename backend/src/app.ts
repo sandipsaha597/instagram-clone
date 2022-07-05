@@ -1,3 +1,4 @@
+const name = 'sam'
 require('dotenv').config()
 require('./config/database').connect()
 import express, { Application, Request, Response } from 'express'
@@ -17,14 +18,13 @@ import {
 } from './utils/utilVariables'
 import Comment from './model/comment'
 import Like from './model/like'
-import { isValidObjectId } from 'mongoose'
+import { isValidObjectId, UpdateQuery } from 'mongoose'
 import Chat from './model/chat'
 import Follow from './model/follow'
 import Inbox from './model/inbox'
 import { validateRequestBody } from './utils/utilFunctions'
 import { Server } from 'socket.io'
 const app: Application = express()
-
 app.use(cors(corsOptions))
 app.use(express.json({ limit: '20mb' }))
 app.use(cookieParser())
@@ -40,16 +40,16 @@ cloudinaryV2.config({
 
 //socket.io
 const state: any = {}
+const ids: any = []
 const io = new Server(4001, { cors: corsOptions })
 io.use(authInSocketIO)
 io.on('connection', (socket) => {
   // @ts-ignore
   const userId = socket.jwtPayload._id
   state[userId] = socket.id
-  console.log(state)
-  socket.on('message', async (data) => {
+  socket.on('message', async (data, callback) => {
     try {
-      const { inboxId, message } = data
+      const { inboxId, message, tempChatId } = data
       const fieldsValid = validateRequestBody({
         _id: inboxId,
         message,
@@ -77,29 +77,81 @@ io.on('connection', (socket) => {
       )
 
       if (isUserAParticipant) {
-        const chat = await Chat.create({
+        const chatObj = {
           //@ts-ignore
           sentBy: userId,
           sentTo: inboxId,
           message,
-        })
+          messageStatus: 'sent',
+        }
+        let chat: any
+        try {
+          chat = await Chat.create(chatObj)
+          // tell sender that the message is sent
+          callback({ status: 'ok', chat: { ...chat, tempChatId } })
+        } catch (error) {
+          console.error(error)
+          callback({ status: 'error', chat: { ...chatObj, tempChatId } })
+        }
+
+        //update inbox lastActivities
+        // when the chat is created successfully
+
+        // check: use room for groups
         inbox.participants.forEach((participant: any) => {
-          if (participant._id === userId) return
-          io.to(state[participant.id]).emit('message', {
-            type: 'messageReceived',
-            chat,
-          })
+          if (participant._id.toString() === userId) return
+          if (!state[participant.id]) return
+          console.log(
+            'emit: message',
+            participant._id === userId,
+            participant._id,
+            userId
+          )
+          io.to(state[participant.id])
+            .timeout(5000)
+            .emit(
+              'message',
+              {
+                type: 'messageReceived',
+                chat,
+                inbox,
+              },
+              async (err: any, response: any) => {
+                console.log('err', err)
+                console.log('res2', response)
+                if (response[0].status === 'ok') {
+                  // tell the message sender that the message is delivered
+                  io.to(state[userId]).emit('message delivered', {
+                    chat,
+                  })
+                  // update chat document and inbox lastActivities
+                  await Chat.updateOne({ _id: chat._id }, {
+                    $set: { messageStatus: 'delivered' },
+                  } as any)
+
+                  await Inbox.updateOne({ _id: chat.sentTo }, {
+                    $set: { messageStatus: 'delivered' },
+                  } as any)
+                }
+              }
+            )
         })
 
         return
       }
-      // return res.status(401).send('you are unauthorized to send this message')
+      socket.emit('error', {
+        type: 'messageFailed',
+        errorMessage: 'you are not a participant',
+      })
     } catch (error) {
       console.error(error)
-      // res.status(500).send('failed')
+      socket.emit('error', {
+        type: 'failed',
+        errorMessage: error,
+      })
     }
   })
-  socket.emit('chat', 'world')
+  socket.on('disconnect', (data) => {})
 })
 // socket.io - end
 
@@ -445,21 +497,26 @@ app.get('/inboxes', auth, async (req: Request, res: Response) => {
 })
 // app.get('/')
 app.get('/chat/:inboxId', auth, async (req: Request, res: Response) => {
-  const inboxId = req.params.inboxId
-  const inbox = await Inbox.findOne({ _id: inboxId })
-  if (!inbox) return res.status(404).send(`invalid inboxId ${inboxId}`)
-  const isUserAParticipant = inbox.participants.find(
-    //@ts-ignore
-    (v: any) => v._id.toString() === req.jwtPayload._id
-  )
-  if (!isUserAParticipant)
-    return res
-      .status(401)
-      .send(
-        `you are not authorized to see chats of this inbox. inboxId: ${inboxId}`
-      )
-  const chats = await Chat.find({ sentTo: req.params.inboxId })
-  res.send(chats)
+  try {
+    const inboxId = req.params.inboxId
+    const inbox = await Inbox.findOne({ _id: inboxId })
+    if (!inbox) return res.status(404).send(`invalid inboxId ${inboxId}`)
+    const isUserAParticipant = inbox.participants.find(
+      //@ts-ignore
+      (v: any) => v._id.toString() === req.jwtPayload._id
+    )
+    if (!isUserAParticipant)
+      return res
+        .status(401)
+        .send(
+          `you are not authorized to see chats of this inbox. inboxId: ${inboxId}`
+        )
+    const chats = await Chat.find({ sentTo: req.params.inboxId })
+    res.send(chats)
+  } catch (error) {
+    console.log(error)
+    res.status(500).send(error)
+  }
 })
 app.post('/message', auth, async (req: Request, res: Response) => {
   try {
