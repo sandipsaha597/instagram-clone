@@ -6,14 +6,8 @@ import {
 } from '../utils/utilVariables'
 
 const chatSchema = new mongoose.Schema({
-  sentBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    required: true,
-  },
-  sentTo: {
-    type: mongoose.Schema.Types.ObjectId,
-    required: true,
-  },
+  sentBy: objectIdRequired,
+  sentTo: objectIdRequired,
   message: stringRequired,
   timeStamp: newDate,
   messageStatus: stringRequired,

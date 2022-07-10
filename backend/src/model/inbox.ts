@@ -18,6 +18,7 @@ const inboxSchema = new mongoose.Schema({
   lastActivity: {
     message: String,
     timestamp: newDate,
+    // TODO: use Enums in message status
     messageStatus: stringRequired,
     sentBy: objectIdRequired,
     unseenNumber: numberRequiredDefaultZero,

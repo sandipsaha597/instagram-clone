@@ -1,16 +1,20 @@
 import axios from 'axios'
-import { useEffect, useId, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { io } from 'socket.io-client'
 import styled from 'styled-components'
 import produce from 'immer'
 
 import { Button, Button2 } from '../atoms/Buttons/Buttons'
 import { transformCloudinaryImage } from '../utils/utilFunctions'
-import { DOMAIN, SOCKET_IO_DOMAIN } from '../utils/utilVariables'
+import { DOMAIN } from '../utils/utilVariables'
 
-const ChatBox = ({ chats, chatUserDetails, setChats, userDetails }: any) => {
-  const socketIO = useRef<any>({})
+const ChatBox = ({
+  socketIO,
+  chats,
+  chatUserDetails,
+  setChats,
+  userDetails,
+}: any) => {
   const messageInputRef = useRef<any>()
   const chatBoxRef = useRef<any>()
 
@@ -18,9 +22,6 @@ const ChatBox = ({ chats, chatUserDetails, setChats, userDetails }: any) => {
   const navigate = useNavigate()
 
   useEffect(() => {
-    socketIO.current = io(`${SOCKET_IO_DOMAIN}`, {
-      withCredentials: true,
-    })
     let socket = socketIO.current
     socket.on('notLoggedIn', () => {
       alert('not logged In')
@@ -40,8 +41,8 @@ const ChatBox = ({ chats, chatUserDetails, setChats, userDetails }: any) => {
     })
 
     socket.on('message delivered', (data: any) => {
-      console.log('message delivered event')
-      console.log(data)
+      //   console.log('message delivered event')
+      //   console.log(data)
       setChats((chats: any) => {
         return produce(chats, (draft: any) => {})
       })
@@ -50,10 +51,8 @@ const ChatBox = ({ chats, chatUserDetails, setChats, userDetails }: any) => {
     socket.on('error', (error: any) => {
       console.error(error)
     })
-  }, [setChats])
-  console.log(chats)
+  }, [setChats, socketIO])
   useEffect(() => {
-    console.log(chatBoxRef.current.scrollHeight)
     chatBoxRef.current.scrollTo(0, chatBoxRef.current.scrollHeight)
     ;(async () => {
       if (!params.inboxId) return

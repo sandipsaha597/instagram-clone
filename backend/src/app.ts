@@ -24,6 +24,7 @@ import Follow from './model/follow'
 import Inbox from './model/inbox'
 import { validateRequestBody } from './utils/utilFunctions'
 import { Server } from 'socket.io'
+import { match } from 'assert'
 const app: Application = express()
 app.use(cors(corsOptions))
 app.use(express.json({ limit: '20mb' }))
@@ -34,19 +35,73 @@ cloudinaryV2.config({
   api_key: '361927556573343',
   api_secret: 'TvCwLE-aYy9lWo1VQRbEgX86Cmk',
 })
-// app.get('/check-auth', auth, async (req: Request, res: Response) => {
-//   if(req.user)
-// })
 
 //socket.io
 const state: any = {}
 const ids: any = []
 const io = new Server(4001, { cors: corsOptions })
 io.use(authInSocketIO)
-io.on('connection', (socket) => {
+
+io.on('connection', async (socket) => {
   // @ts-ignore
   const userId = socket.jwtPayload._id
   state[userId] = socket.id
+  socket.join(userId)
+  const userSockets = await io.in(userId).allSockets()
+  if (userSockets.size === 1) {
+    // @ts-ignore
+    console.log('connect', socket.jwtPayload.username + ' came online')
+    // @ts-ignore
+    socket.to('online-status_' + socket.jwtPayload._id).emit('online-status', {
+      online: true,
+      // @ts-ignore
+      _id: socket.jwtPayload._id,
+    })
+  }
+  socket.on('disconnect', async () => {
+    const userSockets = await io.in(userId).allSockets()
+    if (userSockets.size === 0) {
+      //@ts-ignore
+      console.log('disconnect', socket.jwtPayload.username + ' went offline')
+      socket
+        // @ts-ignore
+        .to('online-status_' + socket.jwtPayload._id)
+        .emit('online-status', {
+          online: false,
+          // @ts-ignore
+          _id: socket.jwtPayload._id,
+        })
+    }
+  })
+  socket.on('get-inboxes', async (data, callback) => {
+    let inboxes: any = await Inbox.find({
+      //@ts-ignore
+      participants: { $elemMatch: { _id: userId } },
+    })
+    const uniqueIds: any = {}
+    const rooms = io.of('/').adapter.rooms
+    inboxes = inboxes.map((inbox: any) => {
+      if (inbox.participants.length > 2) {
+        return inbox
+      }
+      // TODO: fix it for groups
+      const participants = inbox.participants.map((participant: any) => {
+        uniqueIds[participant._id] = true
+        return {
+          ...participant.toObject(),
+          online: rooms.has(participant._id.toString()),
+        }
+      })
+      return {
+        ...inbox.toObject(),
+        participants,
+      }
+    })
+    callback({ data: inboxes })
+    Object.keys(uniqueIds).forEach((v) => {
+      socket.join('online-status_' + v)
+    })
+  })
   socket.on('message', async (data, callback) => {
     try {
       const { inboxId, message, tempChatId } = data
@@ -101,12 +156,6 @@ io.on('connection', (socket) => {
         inbox.participants.forEach((participant: any) => {
           if (participant._id.toString() === userId) return
           if (!state[participant.id]) return
-          console.log(
-            'emit: message',
-            participant._id === userId,
-            participant._id,
-            userId
-          )
           io.to(state[participant.id])
             .timeout(5000)
             .emit(
@@ -151,6 +200,8 @@ io.on('connection', (socket) => {
       })
     }
   })
+  socket.on('message-delivered', async (data) => {})
+  socket.on('message-seen', async (data) => {})
   socket.on('disconnect', (data) => {})
 })
 // socket.io - end
@@ -489,13 +540,26 @@ app.get('/inbox/:userId', auth, async (req: Request, res: Response) => {
   res.send({ inboxDetails: inbox, chats })
 })
 app.get('/inboxes', auth, async (req: Request, res: Response) => {
-  const inboxes = await Inbox.find({
+  let inboxes: any = await Inbox.find({
     //@ts-ignore
     participants: { $elemMatch: { _id: req.jwtPayload._id } },
   })
+  const rooms = io.of('/').adapter.rooms
+  inboxes = inboxes.map((inbox: any) => {
+    // TODO: fix it for groups
+    const participants = inbox.participants.map((participant: any) => {
+      return {
+        ...participant.toObject(),
+        online: rooms.has(participant._id.toString()),
+      }
+    })
+    return {
+      ...inbox.toObject(),
+      participants,
+    }
+  })
   res.send(inboxes)
 })
-// app.get('/')
 app.get('/chat/:inboxId', auth, async (req: Request, res: Response) => {
   try {
     const inboxId = req.params.inboxId
