@@ -1,4 +1,3 @@
-const name = 'sam'
 require('dotenv').config()
 require('./config/database').connect()
 import express, { Application, Request, Response } from 'express'
@@ -18,13 +17,12 @@ import {
 } from './utils/utilVariables'
 import Comment from './model/comment'
 import Like from './model/like'
-import { isValidObjectId, UpdateQuery } from 'mongoose'
+import { isValidObjectId, Types, UpdateQuery } from 'mongoose'
 import Chat from './model/chat'
 import Follow from './model/follow'
 import Inbox from './model/inbox'
 import { validateRequestBody } from './utils/utilFunctions'
 import { Server } from 'socket.io'
-import { match } from 'assert'
 const app: Application = express()
 app.use(cors(corsOptions))
 app.use(express.json({ limit: '20mb' }))
@@ -37,22 +35,19 @@ cloudinaryV2.config({
 })
 
 //socket.io
-const state: any = {}
-const ids: any = []
 const io = new Server(4001, { cors: corsOptions })
 io.use(authInSocketIO)
 
 io.on('connection', async (socket) => {
   // @ts-ignore
   const userId = socket.jwtPayload._id
-  state[userId] = socket.id
   socket.join(userId)
   const userSockets = await io.in(userId).allSockets()
   if (userSockets.size === 1) {
     // @ts-ignore
     console.log('connect', socket.jwtPayload.username + ' came online')
     // @ts-ignore
-    socket.to('online-status_' + socket.jwtPayload._id).emit('online-status', {
+    socket.to('online-status_' + userId).emit('online-status', {
       online: true,
       // @ts-ignore
       _id: socket.jwtPayload._id,
@@ -65,7 +60,7 @@ io.on('connection', async (socket) => {
       console.log('disconnect', socket.jwtPayload.username + ' went offline')
       socket
         // @ts-ignore
-        .to('online-status_' + socket.jwtPayload._id)
+        .to('online-status_' + userId)
         .emit('online-status', {
           online: false,
           // @ts-ignore
@@ -103,6 +98,7 @@ io.on('connection', async (socket) => {
     })
   })
   socket.on('message', async (data, callback) => {
+    console.log('message event')
     try {
       const { inboxId, message, tempChatId } = data
       const fieldsValid = validateRequestBody({
@@ -143,49 +139,44 @@ io.on('connection', async (socket) => {
         try {
           chat = await Chat.create(chatObj)
           // tell sender that the message is sent
-          callback({ status: 'ok', chat: { ...chat, tempChatId } })
+          callback({ status: 'ok', chat: { ...chat.toObject(), tempChatId } })
         } catch (error) {
           console.error(error)
           callback({ status: 'error', chat: { ...chatObj, tempChatId } })
+          return
         }
 
-        //update inbox lastActivities
+        //TODO: update inbox lastActivities
         // when the chat is created successfully
 
         // check: use room for groups
+        // update inbox lastActivities
+        Inbox.updateOne({ lastActivity: { chat_id: chat._id } }, {
+          $set: {
+            chat_id: chat._id,
+            message: chat.message,
+            messageStatus: 'sent',
+            sentBy: chat.sentBy,
+          },
+        } as any)
+        console.log(
+          // @ts-ignore
+          socket.jwtPayload.username,
+          'is connected from',
+          io
+            .of('/')
+            // @ts-ignore
+            .adapter.rooms.get(userId)?.size,
+          'devices'
+        )
+        // send message to every participant
         inbox.participants.forEach((participant: any) => {
-          if (participant._id.toString() === userId) return
-          if (!state[participant.id]) return
-          io.to(state[participant.id])
-            .timeout(5000)
-            .emit(
-              'message',
-              {
-                type: 'messageReceived',
-                chat,
-                inbox,
-              },
-              async (err: any, response: any) => {
-                console.log('err', err)
-                console.log('res2', response)
-                if (response[0].status === 'ok') {
-                  // tell the message sender that the message is delivered
-                  io.to(state[userId]).emit('message delivered', {
-                    chat,
-                  })
-                  // update chat document and inbox lastActivities
-                  await Chat.updateOne({ _id: chat._id }, {
-                    $set: { messageStatus: 'delivered' },
-                  } as any)
-
-                  await Inbox.updateOne({ _id: chat.sentTo }, {
-                    $set: { messageStatus: 'delivered' },
-                  } as any)
-                }
-              }
-            )
+          socket.to(participant._id.toString()).emit('message', {
+            type: 'messageReceived',
+            chat,
+            inbox,
+          })
         })
-
         return
       }
       socket.emit('error', {
@@ -200,9 +191,66 @@ io.on('connection', async (socket) => {
       })
     }
   })
-  socket.on('message-delivered', async (data) => {})
+  socket.on('message-delivered', async (data) => {
+    console.log('message delivered event')
+    const {
+      inbox: { _id: inboxId },
+      chat: { _id: chatId },
+    } = data
+    // TODO: make sure that chat.sentBy is different from userId
+    const chat = await Chat.findOne({ _id: chatId })
+    if (
+      !chat ||
+      chat.sentBy.toString() === userId ||
+      chat.messageStatus !== 'sent'
+    )
+      return
+    const inbox = await Inbox.findOne({ _id: inboxId })
+    if (!inbox || inbox.participants.length > 2) return
+    if (chat.sentTo.toString() !== inboxId) return
+    const isUserAParticipant = inbox.participants.find(
+      //@ts-ignore
+      (v: any) => v._id.toString() === userId
+    )
+    if (!isUserAParticipant) return
+    const otherParticipant = inbox.participants.filter(
+      (v: any) => v._id.toString() !== userId
+    )
+    // tell the message sender that the message is delivered
+    // read receipts are only for private chats not for groups that why otherParticipants[0]
+    io.to(otherParticipant[0]._id.toString()).emit('message-delivered', {
+      chat: {
+        _id: chatId,
+        sentTo: inboxId,
+      },
+    })
+    // update chat document and inbox lastActivities
+    // TODO: update only if message status in sent
+    // TODO: make sure that the user have right to do these changes
+    await Chat.updateOne(
+      {
+        _id: chatId,
+        messageStatus: 'sent',
+      },
+      {
+        $set: { messageStatus: 'delivered' },
+      } as any
+    )
+    if (inbox.lastActivity.messageStatus !== 'sent') return
+    await Inbox.updateOne(
+      {
+        _id: inboxId,
+        lastActivity: {
+          chat_id: chatId,
+          messageStatus: 'sent',
+        },
+      },
+      {
+        $set: { lastActivity: { messageStatus: 'delivered' } },
+      } as any
+    )
+  })
   socket.on('message-seen', async (data) => {})
-  socket.on('disconnect', (data) => {})
 })
 // socket.io - end
 
@@ -350,7 +398,7 @@ app.post('/login', async (req: Request, res: Response) => {
     res.status(500).send('failed to login')
   }
 })
-
+// create post
 app.post(
   '/createPost',
   express.json({ limit: '8mb' }),
@@ -527,6 +575,7 @@ app.get('/inbox/:userId', auth, async (req: Request, res: Response) => {
         },
       ],
       lastActivity: {
+        chat_id: new Types.ObjectId(),
         message: '',
         messageStatus: 'sent',
         //@ts-ignore

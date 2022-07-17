@@ -16,6 +16,7 @@ const inboxSchema = new mongoose.Schema({
     },
   ],
   lastActivity: {
+    chat_id: objectIdRequired,
     message: String,
     timestamp: newDate,
     // TODO: use Enums in message status

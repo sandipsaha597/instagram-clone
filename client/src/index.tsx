@@ -41,7 +41,6 @@ const Index = () => {
   if (userDetails === 'loading') {
     return <h1>Loading...</h1>
   }
-  console.log('running', userDetails)
   return (
     <Routes>
       {/* public routes

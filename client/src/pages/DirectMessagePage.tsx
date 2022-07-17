@@ -17,6 +17,8 @@ const DirectMessagePage = ({ userDetails, chats, setChats }: any) => {
     socketIO.current = io(`${SOCKET_IO_DOMAIN}`, {
       withCredentials: true,
     })
+  }, [])
+  useEffect(() => {
     let socket = socketIO.current
     socket.emit('get-inboxes', {}, (fetchedInboxes: any) => {
       let temp: any = {}
@@ -73,7 +75,14 @@ const DirectMessagePage = ({ userDetails, chats, setChats }: any) => {
       </Inbox>
       {Object.keys(socketIO.current).length > 0 && (
         <ChatBox
-          {...{ socketIO, chats, chatUserDetails, setChats, userDetails }}
+          {...{
+            socketIO,
+            chats,
+            chatUserDetails,
+            setChats,
+            userDetails,
+            setInboxes,
+          }}
         />
       )}
     </StyledContainer>
