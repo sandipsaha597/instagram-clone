@@ -1,6 +1,6 @@
 import axios from 'axios'
-import React, { useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useRef } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import styled from 'styled-components'
 import { Or } from '../App'
 import { BorderedBox } from '../atoms/Boxes/Boxes'
@@ -11,7 +11,7 @@ import { LinkText, Text1 } from '../atoms/Text/Texts'
 import { DOMAIN } from '../utils/utilVariables'
 
 //@ts-ignore
-const LoginForm = ({ setUserLoggedIn, setUserDetails }) => {
+const LoginForm = ({ setUserDetails }) => {
   const loginFormValues = useRef({
     usernameOrEmail: '',
     password: '',
@@ -19,6 +19,9 @@ const LoginForm = ({ setUserLoggedIn, setUserDetails }) => {
     username: '',
   })
   const navigate = useNavigate()
+  const location: any = useLocation()
+  const from = location.state?.from?.pathname || '/'
+
   const login = async (e: any) => {
     e.preventDefault()
     try {
@@ -34,8 +37,7 @@ const LoginForm = ({ setUserLoggedIn, setUserDetails }) => {
       )
       if (response.data._id) {
         setUserDetails(response.data)
-        setUserLoggedIn(true)
-        navigate('/')
+        navigate(from, { replace: true })
       }
     } catch (err) {
       console.log(err)
@@ -60,7 +62,7 @@ const LoginForm = ({ setUserLoggedIn, setUserDetails }) => {
       <StyledBorderedBox>
         <Text1>
           Don't have an account?{' '}
-          <LinkText href="#" bold>
+          <LinkText to="/accounts/signup" $bold>
             Sign up
           </LinkText>
         </Text1>

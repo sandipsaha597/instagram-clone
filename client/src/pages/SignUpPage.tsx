@@ -21,7 +21,7 @@ const SignUpPage = () => {
         </BorderedBox>
         <BorderedBox className="bottom">
           <Text1>
-            Have an account? <LinkText href="#">Log in</LinkText>
+            Have an account? <LinkText to="/accounts/login">Log in</LinkText>
           </Text1>
         </BorderedBox>
       </Right>

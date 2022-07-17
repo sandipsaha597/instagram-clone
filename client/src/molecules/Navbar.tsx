@@ -14,7 +14,7 @@ import Logo from '../atoms/IconsAndImages/Logo'
 import { DOMAIN } from '../utils/utilVariables'
 import AddPost from './AddPost'
 
-const Navbar = ({ setUserLoggedIn, userDetails }: any) => {
+const Navbar = ({ userDetails, setUserDetails }: any) => {
   const [modalHidden, setModalHidden] = useState(true)
   const [sendPostModalHidden, setSendPostModalHidden] = useState(true)
   return (
@@ -50,7 +50,7 @@ const Navbar = ({ setUserLoggedIn, userDetails }: any) => {
                   <ProfileImg src="https://res.cloudinary.com/dbevmtl8a/image/upload/w_24/v1650475415/users/instagram-clone-default-dp_qilu7c" />
                 </button>
                 <Modal
-                  setUserLoggedIn={(e: boolean) => setUserLoggedIn(e)}
+                  setUserDetails={(e: boolean) => setUserDetails(e)}
                   hidden={modalHidden}
                   userDetails={userDetails}
                 />
@@ -104,13 +104,18 @@ const Right = styled.div`
   }
 `
 
-const Modal = ({ hidden, setUserLoggedIn, userDetails }: any) => {
+const Modal = ({ hidden, userDetails, setUserDetails }: any) => {
   const navigate = useNavigate()
   const logout = async (e: any) => {
     e.preventDefault()
-    const response = await axios.get(`${DOMAIN}/logout`)
-    navigate('/')
-    setUserLoggedIn(false)
+    try {
+      await axios.get(`${DOMAIN}/logout`)
+      navigate('/')
+      setUserDetails(false)
+    } catch (err) {
+      console.log(err)
+      alert('failed to logout')
+    }
   }
   return (
     <Card hidden={hidden}>

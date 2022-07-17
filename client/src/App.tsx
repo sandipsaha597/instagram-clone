@@ -3,19 +3,17 @@ import styled from 'styled-components'
 import './App.css'
 import axios from 'axios'
 import { Button } from './atoms/Buttons/Buttons'
-import { useNavigate } from 'react-router-dom'
+import { Outlet, useNavigate } from 'react-router-dom'
 import { DOMAIN } from './utils/utilVariables'
 import Navbar from './molecules/Navbar'
 //@ts-ignore
-const App: any = ({ setUserLoggedIn, userDetails, setUserDetails }) => {
-  useEffect(() => {
-    return () => setUserDetails({})
-  }, [setUserDetails])
+const App: any = ({ userDetails, setUserDetails }) => {
   return (
     <div className="App">
-      <Navbar setUserLoggedIn={setUserLoggedIn} userDetails={userDetails} />
+      <Navbar userDetails={userDetails} setUserDetails={setUserDetails} />
       <h1>{userDetails.username}</h1>
       <p>{userDetails._id}</p>
+      <Outlet />
     </div>
   )
 }

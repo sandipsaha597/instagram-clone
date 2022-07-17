@@ -1,7 +1,14 @@
 import axios from 'axios'
 import React, { useEffect, useRef, useState } from 'react'
 import ReactDOM from 'react-dom'
-import { BrowserRouter, Route, Routes, useNavigate } from 'react-router-dom'
+import {
+  BrowserRouter,
+  Navigate,
+  Outlet,
+  Route,
+  Routes,
+  useLocation,
+} from 'react-router-dom'
 import App from './App'
 import LoginForm from './molecules/LoginForm'
 import DirectMessagePage from './pages/DirectMessagePage'
@@ -12,97 +19,122 @@ import { DOMAIN } from './utils/utilVariables'
 axios.defaults.withCredentials = true
 
 const Index = () => {
-  const [userLoggedIn, setUserLoggedIn] = useState<'unknown' | boolean>(
-    'unknown'
+  const [userDetails, setUserDetails] = useState<{} | false | 'loading'>(
+    'loading'
   )
-  const [userDetails, setUserDetails] = useState<any>({})
   const [chats, setChats] = useState<any>({})
   const chatFetched = useRef<any>({})
-  const navigate = useNavigate()
   useEffect(() => {
     ;(async () => {
       try {
         const response = await axios.get(`${DOMAIN}/`)
         if (response.data._id) {
           setUserDetails(response.data)
-          setUserLoggedIn(true)
         } else {
-          setUserLoggedIn(false)
         }
       } catch (err) {
-        console.error(err)
-        setUserLoggedIn(false)
-        navigate('/')
+        console.error('error2', err)
+        setUserDetails(false)
       }
     })()
-  }, [navigate])
-  if (!userDetails._id && userLoggedIn === 'unknown') {
+  }, [])
+  if (userDetails === 'loading') {
     return <h1>Loading...</h1>
   }
+  console.log('running', userDetails)
   return (
     <Routes>
-      <Route
-        path="/"
-        element={
-          userLoggedIn ? (
-            <App
-              setUserLoggedIn={setUserLoggedIn}
-              userDetails={userDetails}
-              setUserDetails={setUserDetails}
-            />
-          ) : (
+      {/* public routes
+          /:username
+          /somepost */}
+      {/* if not loggedIn
+          / => <Login />
+          /login
+          /signup */}
+      {/* if loggedIn
+          / => <NewsFeed /> 
+          /inbox
+          /inbox/:inboxId
+          /etc */}
+      {userDetails === false && (
+        <Route
+          index
+          element={
             <LoginForm
-              setUserLoggedIn={setUserLoggedIn}
               setUserDetails={(details: any) => setUserDetails(details)}
             />
-          )
-        }
-      ></Route>
+          }
+        />
+      )}
       <Route
-        path="/login"
         element={
-          <LoginForm
-            setUserLoggedIn={setUserLoggedIn}
-            setUserDetails={(details: any) => setUserDetails(details)}
-          />
+          <NoAuth {...{ userDetails }}>
+            <Outlet />
+          </NoAuth>
         }
-      />
-      <Route path="/signup" element={<SignUpPage />} />
-      <Route path="/somepost" element={<>post some</>} />
+      >
+        {/* can't visit these routes if logged in */}
+        <Route
+          path="accounts/login"
+          element={
+            <LoginForm
+              setUserDetails={(details: any) => setUserDetails(details)}
+            />
+          }
+        />
+        <Route path="accounts/signup" element={<SignUpPage />} />
+      </Route>
       <Route
-        path="/:username"
         element={
-          <ProfilePage
-            userDetails={userDetails}
-            chatFetched={chatFetched}
-            chats={chats}
-            setChats={setChats}
-          />
+          <App userDetails={userDetails} setUserDetails={setUserDetails} />
         }
-      />
-      <Route
-        path="/inbox"
-        element={
-          <DirectMessagePage
-            userDetails={userDetails}
-            chatFetched={chatFetched}
-            chats={chats}
-            setChats={setChats}
+      >
+        <Route
+          path=":username"
+          element={
+            <ProfilePage
+              userDetails={userDetails}
+              chatFetched={chatFetched}
+              setChats={setChats}
+            />
+          }
+        />
+        <Route path="/somepost" element={<>post some</>} />
+
+        <Route
+          element={
+            <RequireAuth userDetails={userDetails}>
+              <Outlet />
+            </RequireAuth>
+          }
+        >
+          {/* Protected routes */}
+          <Route index element={<h1>News Feed</h1>} />
+          <Route
+            path="/inbox"
+            element={
+              <DirectMessagePage
+                userDetails={userDetails}
+                chatFetched={chatFetched}
+                chats={chats}
+                setChats={setChats}
+              />
+            }
           />
-        }
-      />
-      <Route
-        path="/inbox/:inboxId"
-        element={
-          <DirectMessagePage
-            userDetails={userDetails}
-            chatFetched={chatFetched}
-            chats={chats}
-            setChats={setChats}
+          <Route
+            path="/inbox/:inboxId"
+            element={
+              <DirectMessagePage
+                userDetails={userDetails}
+                chatFetched={chatFetched}
+                chats={chats}
+                setChats={setChats}
+              />
+            }
           />
-        }
-      />
-      <Route path="*" element={<h1>Page does not exist</h1>} />
+          <Route path="*" element={<h1>Page does not exist</h1>} />
+        </Route>
+      </Route>
     </Routes>
   )
 }
@@ -120,3 +152,26 @@ ReactDOM.render(
 // to log results (for example: reportWebVitals(console.log))
 // or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
 reportWebVitals()
+
+const NoAuth = ({ children, userDetails }: any) => {
+  console.log('noauth', userDetails)
+  if (userDetails) {
+    return <Navigate to="/" replace />
+  }
+
+  return children
+}
+
+function RequireAuth({ children, userDetails }: any) {
+  let location = useLocation()
+
+  if (!userDetails) {
+    // Redirect them to the /login page, but save the current location they were
+    // trying to go to when they were redirected. This allows us to send them
+    // along to that page after they login, which is a nicer user experience
+    // than dropping them off on the home page.
+    return <Navigate to="/accounts/login" state={{ from: location }} replace />
+  }
+
+  return children
+}

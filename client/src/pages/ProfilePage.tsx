@@ -7,7 +7,7 @@ import { transformCloudinaryImage } from '../utils/utilFunctions'
 import { DOMAIN } from '../utils/utilVariables'
 import { Container } from './../atoms/Boxes/Container'
 import { useNavigate, useParams } from 'react-router-dom'
-const ProfilePage = ({ userDetails, chatFetched, setChats }: any) => {
+const ProfilePage = ({ userDetails, setChats }: any) => {
   const [profileDetails, setProfileDetails] = useState<any>()
 
   const params = useParams()
@@ -26,7 +26,6 @@ const ProfilePage = ({ userDetails, chatFetched, setChats }: any) => {
   const getInbox = async () => {
     const inbox = await axios.get(`${DOMAIN}/inbox/${profileDetails._id}`)
     const inboxId = inbox.data.inboxDetails._id
-    // chatFetched.current[inboxId] = true
     setChats((chats: any) => {
       chats.loading = false
       chats[inboxId] = inbox.data.chats
@@ -38,7 +37,6 @@ const ProfilePage = ({ userDetails, chatFetched, setChats }: any) => {
   if (!profileDetails?.username) return <h1>Loading...</h1>
   return (
     <>
-      <Navbar userDetails={userDetails} />
       <StyledContainer as="header">
         <div className="img-box">
           <img

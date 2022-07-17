@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import styled from 'styled-components'
 
 export const SubHeading = styled.div`
@@ -7,9 +8,9 @@ export const SubHeading = styled.div`
   margin-bottom: 10px;
   text-align: center;
 `
-export const LinkText = styled.a<any>`
+export const LinkText = styled(Link)<any>`
   font-size: inherit;
-  font-weight: ${({ bold }) => (bold ? 'bold' : 'normal')};
+  font-weight: ${({ $bold }) => ($bold ? 'bold' : 'normal')};
 `
 
 export const Text1 = styled.p`
