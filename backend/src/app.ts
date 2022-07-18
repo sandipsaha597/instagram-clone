@@ -7,22 +7,25 @@ import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import cors from 'cors'
 import cookieParser from 'cookie-parser'
-import User from './model/user'
-import Post from './model/post'
+import User from './models/user'
+import Post from './models/post'
 import { auth, authInSocketIO } from './middleware/auth'
-import {
-  cookieOptions,
-  corsOptions,
-  defaultProfilePicture,
-} from './utils/utilVariables'
-import Comment from './model/comment'
-import Like from './model/like'
-import { isValidObjectId, Types, UpdateQuery } from 'mongoose'
-import Chat from './model/chat'
-import Follow from './model/follow'
-import Inbox from './model/inbox'
+import { cookieOptions, corsOptions } from './utils/utilVariables'
+import Comment from './models/comment'
+import Like from './models/like'
+import { isValidObjectId, Types } from 'mongoose'
+import Chat from './models/chat'
+import Follow from './models/follow'
+import Inbox from './models/inbox'
 import { validateRequestBody } from './utils/utilFunctions'
 import { Server } from 'socket.io'
+import {
+  login,
+  logout,
+  signup,
+  userDetails,
+} from './controllers/userController'
+import { comment, createPost, like } from './controllers/postController'
 const app: Application = express()
 app.use(cors(corsOptions))
 app.use(express.json({ limit: '20mb' }))
@@ -254,23 +257,9 @@ io.on('connection', async (socket) => {
 })
 // socket.io - end
 
-app.get('/', auth, async (req: Request, res: Response) => {
-  // @ts-ignore
-  if (!!req.searchUserBy && Object.keys(req.searchUserBy)) {
-    //@ts-ignore
-    const user = await User.findOne(req.searchUserBy)
-    if (user) {
-      return res.send(user)
-    }
-    res.status(204).clearCookie('token').send('hello')
-  } else {
-    res.status(401).send('wrong credentials')
-  }
-})
+app.get('/', auth, userDetails)
 
-app.get('/logout', async (req: Request, res: Response) => {
-  res.status(204).clearCookie('token').send()
-})
+app.get('/logout', logout)
 
 app.delete('/deleteImage', async (req: Request, res: Response) => {
   const destroyAll = () => {
@@ -288,262 +277,15 @@ app.delete('/deleteImage', async (req: Request, res: Response) => {
 })
 
 // /signup
-app.post(
-  '/signup',
-  express.json({ limit: '2mb' }),
-  async (req: Request, res: Response) => {
-    try {
-      const { name, username, email, password, profilePicture } = req.body
-      if (!(name && username && email && password)) {
-        return res.status(400).send('All fields are required')
-      }
+app.post('/signup', express.json({ limit: '2mb' }), signup)
 
-      const existingUser = await User.findOne({
-        $or: [{ email }, { username }],
-      })
-
-      if (existingUser) {
-        return res.status(400).send('User already exists')
-      }
-
-      let encryptedPassword = await bcrypt.hash(password, 10)
-      const tempUserObj: {
-        name: string
-        username: string
-        email: string
-        password: string
-        profilePicture?: {
-          withVersion: string
-          withoutVersion: string
-        }
-      } = {
-        name,
-        username,
-        email,
-        password: encryptedPassword,
-      }
-      if (profilePicture && typeof profilePicture === 'string') {
-        let result = await cloudinaryV2.uploader.upload(profilePicture, {
-          folder: 'users',
-          allowed_formats: ['jpg', 'png', 'webp'],
-        })
-        const withoutVersion = result.secure_url.replace(
-          `v${result.version}/`,
-          ''
-        )
-        tempUserObj.profilePicture = {
-          withVersion: result.secure_url,
-          withoutVersion,
-        }
-      }
-      const user = await User.create(tempUserObj)
-
-      const { JWT_SECRET } = process.env
-      const token = jwt.sign(
-        {
-          username,
-          email,
-          _id: user._id,
-          name,
-          profilePicture: defaultProfilePicture,
-        },
-        JWT_SECRET as string,
-        {
-          expiresIn: '5d',
-        }
-      )
-      user.token = token
-      user.password = undefined
-      res.status(201).cookie('token', token, cookieOptions).send(user)
-    } catch (e) {
-      console.log(e)
-
-      res.status(500).send('failed to signup')
-    }
-
-    //create token
-  }
-)
-
-app.post('/login', async (req: Request, res: Response) => {
-  try {
-    const { username, email, password } = req.body
-    if (!((username || email) && password))
-      return res.status(400).send('All fields are required')
-
-    const searchUserBy = username ? { username } : { email }
-    const user = await User.findOne(searchUserBy)
-    if (user && (await bcrypt.compare(password, user.password))) {
-      const { JWT_SECRET } = process.env
-      const token = jwt.sign(
-        {
-          username,
-          email,
-          _id: user._id,
-          name: user.name,
-          profilePicture: user.profilePicture.withoutVersion,
-        },
-        JWT_SECRET as string,
-        {
-          expiresIn: '5d',
-        }
-      )
-      user.password = undefined
-
-      return res.status(200).cookie('token', token, cookieOptions).send(user)
-    }
-    return res.status(401).send('Invalid credentials')
-  } catch (e) {
-    console.log(e)
-    res.status(500).send('failed to login')
-  }
-})
+app.post('/login', login)
 // create post
-app.post(
-  '/createPost',
-  express.json({ limit: '8mb' }),
-  auth,
-  async (req: Request, res: Response) => {
-    const { caption, images } = req.body
-    if (images.length < 1) return res.status(400).send('no image was sent')
-    try {
-      // @ts-expect-error
-      console.log(req.searchUserBy.username)
-      // @ts-expect-error
-      if (req?.searchUserBy.username) {
-        const tempPostObj: any = {
-          //@ts-ignore
-          postBy: { username: req.searchUserBy.username },
-          caption,
-          // hashtags: ,
-        }
-        // folder, images,
-        const result = await uploadImages(images)
-        if (result.status === 'ok' && result.imageArray) {
-          tempPostObj.images = result.imageArray.map((v: any) => {
-            const tempArray = v.url.split('.')
-            tempArray.pop()
-            return { url: tempArray.join('.'), publicId: v.publicId }
-          })
-        } else {
-          return res.status(400).send('failed')
-        }
-        console.log('running')
-        const post = await Post.create(tempPostObj)
-        console.log(post)
-        res.status(201).send(post)
-        return
-      }
+app.post('/createPost', express.json({ limit: '8mb' }), auth, createPost)
 
-      res.status(400).send('failed to create post')
-    } catch (e) {
-      console.log(e)
-      res.status(500).send('failed to create post')
-    }
-  }
-)
+app.post('/like', auth, like)
 
-app.post('/like', auth, async (req: Request, res: Response) => {
-  try {
-    //@ts-ignore
-    if (!req.searchUserBy.username) return res.status(400).send('please log in')
-    const { _id, type } = req.body
-    if (!(_id && type)) return res.status(400).send('id & type is required')
-    if (!isValidObjectId(_id)) return res.status(400).send('invalid objectId')
-    if (!(type === 'post' || type === 'comment'))
-      return res.status(400).send('invalid type parameter')
-
-    let result
-    if (type === 'post') {
-      result = await Post.updateOne({ _id }, { $inc: { likes: 1 } } as any)
-    }
-    if (type === 'comment') {
-      result = await Comment.updateOne({ _id }, { $inc: { likes: 1 } } as any)
-    }
-    if (!result) return res.status(400).send('failed')
-    if (result.modifiedCount === 0 && result.matchedCount === 0)
-      return res.status(400).send('id does not exist')
-    if (result.modifiedCount === 0) return res.status(500).send('failed')
-    const like = await Like.create({
-      parentId: _id,
-      type,
-      likedBy: {
-        //@ts-ignore
-        username: req.searchUserBy.username,
-        //@ts-ignore
-        profilePicture: req.jwtPayload.profilePicture,
-      },
-    })
-    console.log(like)
-    return res.status(201).send('liked')
-  } catch (err) {
-    console.log(err)
-    res.status(500).send('failed')
-  }
-})
-
-app.post('/comment', auth, async (req: Request, res: Response) => {
-  //@ts-ignore
-  if (!req.searchUserBy.username) return res.status(400).send('please log in')
-
-  const { _id, type, comment } = req.body
-  if (!(_id && type && comment)) return res.status(400).send('missing fields')
-  if (!isValidObjectId(_id)) return res.status(400).send('invalid objectId')
-  if (!(type === 'post' || type === 'comment' || type === 'reply'))
-    return res.status(400).send('invalid type')
-
-  let result: any
-  let parentId: string = ''
-  let resultType: 'comment' | 'reply' = 'comment'
-  if (type === 'post') {
-    result = await Post.findOneAndUpdate(
-      { _id },
-      { $inc: { commentCount: 1 } as any }
-    )
-    if (!result) return res.status(400).send(`post does not exist`)
-    parentId = result._id
-    resultType = 'comment'
-  }
-  if (type === 'comment' || type === 'reply') {
-    result = await Comment.findOne({ _id })
-    if (!result) return res.status(400).send(`comment does not exist`)
-    if (result.type === 'comment') {
-      parentId = result._id
-      const incrementReplyCount = await Comment.updateOne({ _id }, {
-        $inc: { replyCount: 1 },
-      } as any)
-    }
-    if (result.type === 'reply') {
-      parentId = result.parentId
-      const incrementReplyCount = await Comment.updateOne(
-        { _id: result.parentId },
-        {
-          $inc: { replyCount: 1 },
-        } as any
-      )
-    }
-    resultType = 'reply'
-  }
-  // @ts-ignore
-  console.log(parentId)
-  const tempCommentObj: any = {
-    parentId,
-    type: resultType,
-    comment,
-    commentedBy: {
-      // @ts-ignore
-      username: req.searchUserBy.username,
-      // @ts-ignore
-      profilePicture: req.jwtPayload.profilePicture,
-    },
-  }
-  if (resultType === 'comment') {
-    tempCommentObj.replyCount = 0
-  }
-  const commentResult = await Comment.create(tempCommentObj)
-  console.log(commentResult)
-  res.send(commentResult)
-})
+app.post('/comment', auth, comment)
 
 app.get('/inbox/:userId', auth, async (req: Request, res: Response) => {
   const user = await User.findOne({ _id: req.params.userId })
@@ -680,68 +422,6 @@ app.post('/follow-unfollow', auth, async (req: Request, res: Response) => {
   })
   console.log(follow)
 })
-
-const uploadImages = async (images: string[]) => {
-  try {
-    console.log('uploadImages')
-    const promiseArray: any[] = new Array(images.length)
-    const imageArray: Array<{ url: string; publicId: string }> = []
-    let imageUploadErrorOccurred = false
-    let responseCount = 0
-    const destroyAll = () => {
-      if (responseCount >= imageArray.length) {
-        imageArray.forEach((v) => {
-          if (v.url === '') return
-          console.log(v)
-          // @ts-ignore
-          cloudinary.uploader
-            .destroy(v.publicId)
-            .then((v: any) => {
-              console.log(v)
-            })
-            .catch((err: any) =>
-              console.log(`failed to destroy image ${v} ${err}`)
-            )
-        })
-      }
-    }
-    images.forEach((image: string, i: number) => {
-      imageArray.push({ url: '', publicId: '' })
-      promiseArray.push(
-        cloudinaryV2.uploader
-          .upload(image, {
-            folder: 'images',
-            allowed_formats: ['jpg', 'png', 'webp'],
-          })
-          .then((v: cloudinary.UploadApiResponse) => {
-            imageArray[i].url = v.secure_url
-            imageArray[i].publicId = v.public_id
-            responseCount++
-            if (imageUploadErrorOccurred) {
-              destroyAll()
-            }
-          })
-          .catch((err: cloudinary.UploadApiErrorResponse) => {
-            // res.status(400).send('failed')
-            console.log('image upload failed', err)
-            imageUploadErrorOccurred = true
-            responseCount++
-            destroyAll()
-          })
-      )
-    })
-    await Promise.all(promiseArray)
-    if (imageUploadErrorOccurred) {
-      return { status: 'failed' }
-    }
-    return { status: 'ok', imageArray }
-  } catch (error) {
-    console.log(error)
-    return { status: 'failed' }
-
-    // res.send('error')
-  }
-}
 
 app.get('/:username', async (req: Request, res: Response) => {
   try {

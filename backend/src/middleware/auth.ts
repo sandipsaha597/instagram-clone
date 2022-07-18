@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from 'express'
 import jwt from 'jsonwebtoken'
-import User from '../model/user'
+import User from '../models/user'
 
 interface ModifiedRequest extends Request {
   searchUserBy: {
