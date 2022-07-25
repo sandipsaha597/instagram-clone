@@ -33,7 +33,7 @@ const Index = () => {
         } else {
         }
       } catch (err) {
-        console.error('error2', err)
+        console.error(err)
         setUserDetails(false)
       }
     })()

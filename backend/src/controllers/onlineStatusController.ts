@@ -12,8 +12,7 @@ export const handleUserConnect = async (socket: Socket, io: any) => {
     // @ts-ignore
     socket.to('online-status_' + userId).emit('online-status', {
       online: true,
-      // @ts-ignore
-      _id: socket.jwtPayload._id,
+      _id: userId,
     })
   }
 }

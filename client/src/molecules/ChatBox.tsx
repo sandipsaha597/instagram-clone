@@ -7,10 +7,9 @@ import produce from 'immer'
 import { Button, Button2 } from '../atoms/Buttons/Buttons'
 import { transformCloudinaryImage } from '../utils/utilFunctions'
 import { DOMAIN } from '../utils/utilVariables'
-import { S_IFMT } from 'constants'
+import { socket } from '../SocketIO'
 
 const ChatBox = ({
-  socketIO,
   chats,
   chatUserDetails,
   setChats,
@@ -24,11 +23,17 @@ const ChatBox = ({
   const navigate = useNavigate()
 
   useEffect(() => {
-    let socket = socketIO.current
+    if (!params.inboxId) return
+    socket.emit('message-seen-all', { inboxId: params.inboxId })
+  }, [params.inboxId])
+  useEffect(() => {
+    console.log('running')
+    socket.off('notLoggedIn')
     socket.on('notLoggedIn', () => {
       alert('not logged In')
     })
 
+    socket.off('message')
     socket.on('message', (data: any) => {
       console.log(
         'message received',
@@ -40,11 +45,19 @@ const ChatBox = ({
         data.inbox.participants.length === 2 &&
         data.chat.sentBy !== userDetails._id
       ) {
-        console.log('message delivered emit')
-        socket.emit('message-delivered', {
-          chat: data.chat,
-          inbox: data.inbox,
-        })
+        if (params.inboxId === data.inbox._id) {
+          console.log('message seen emit')
+          socket.emit('message-seen', {
+            chat: data.chat,
+            inbox: data.inbox,
+          })
+        } else {
+          console.log('message delivered emit')
+          socket.emit('message-delivered', {
+            chat: data.chat,
+            inbox: data.inbox,
+          })
+        }
       }
       setChats((chats: any) => {
         return produce(chats, (draft: any) => {
@@ -57,6 +70,7 @@ const ChatBox = ({
       })
     })
 
+    socket.off('message-delivered')
     socket.on('message-delivered', (data: any) => {
       console.log('message delivered event')
       setChats((chats: any) => {
@@ -90,10 +104,71 @@ const ChatBox = ({
       })
     })
 
+    socket.off('message-seen')
+    socket.on('message-seen', (data: any) => {
+      console.log('message seen event')
+      setChats((chats: any) => {
+        return produce(chats, (draft: any) => {
+          draft[data.chat.sentTo].every((v: any) => {
+            if (data.chat._id === v._id) {
+              v.messageStatus = 'seen'
+              return false
+            }
+            return true
+          })
+        })
+      })
+      setInboxes((inboxes: any) => {
+        return produce(inboxes, (draft: any) => {
+          draft.every((v: any) => {
+            if (v._id === data.chat.sentTo) {
+              if (
+                v.lastActivity.chat_id === data.chat._id &&
+                v.lastActivity.messageStatus !== 'seen'
+              ) {
+                v.lastActivity.messageStatus = 'seen'
+              }
+              return false
+            }
+            return true
+          })
+        })
+      })
+    })
+
+    socket.off('message-seen-all')
+    socket.on('message-seen-all', (data: any) => {
+      console.log('message-seen-all event')
+      const { inboxId } = data
+      setChats((chats: any) => {
+        return produce(chats, (draft: any) => {
+          draft[inboxId].forEach((v: any) => {
+            if (v.messageStatus === 'delivered') {
+              v.messageStatus = 'seen'
+            }
+          })
+        })
+      })
+      setInboxes((inboxes: any) => {
+        return produce(inboxes, (draft: any) => {
+          draft.every((inbox: any) => {
+            if (inbox._id === inboxId) {
+              if (inbox.lastActivity.messageStatus === 'delivered') {
+                inbox.lastActivity.messageStatus = 'seen'
+              }
+              return false
+            }
+            return true
+          })
+        })
+      })
+    })
+
+    socket.off('error')
     socket.on('error', (error: any) => {
       console.error(error)
     })
-  }, [userDetails._id, setChats, socketIO, setInboxes])
+  }, [userDetails._id, params.inboxId, setChats, setInboxes])
   useEffect(() => {
     chatBoxRef.current.scrollTo(0, chatBoxRef.current.scrollHeight)
     ;(async () => {
@@ -123,7 +198,6 @@ const ChatBox = ({
     if (message.trim() === '') return
     console.log('sendMessage()', message)
     if (!params.inboxId) return
-    let socket = socketIO.current
     const randomNumber = Math.floor(Math.random() * 8999999 + 1000000)
     let tempChatId = 'temp-' + randomNumber
     setChats((chats: any) => {
@@ -143,6 +217,8 @@ const ChatBox = ({
         }
       })
     })
+    console.log('socket', socket)
+
     socket.emit(
       'message',
       {

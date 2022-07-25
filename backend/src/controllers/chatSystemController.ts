@@ -73,6 +73,7 @@ export const chat = async (req: Request, res: Response) => {
 }
 
 export const getInboxes = async (socket: Socket, io: any, callback: any) => {
+  console.log('get-inboxes event')
   // @ts-ignore
   const userId = socket.jwtPayload._id
   let inboxes: any = await Inbox.find({
@@ -99,6 +100,7 @@ export const getInboxes = async (socket: Socket, io: any, callback: any) => {
   })
   callback({ data: inboxesWithOnlineStatus })
   // subscribe to online-status of people in current inbox
+  delete uniqueIds[userId]
   Object.keys(uniqueIds).forEach((v) => {
     socket.join('online-status_' + v)
   })
@@ -160,19 +162,22 @@ export const message = async (
         return
       }
 
-      //TODO: update inbox lastActivities
-      // when the chat is created successfully
-
       // check: use room for groups
       // update inbox lastActivities
-      Inbox.updateOne({ lastActivity: { chat_id: chat._id } }, {
-        $set: {
-          chat_id: chat._id,
-          message: chat.message,
-          messageStatus: 'sent',
-          sentBy: chat.sentBy,
-        },
-      } as any)
+      await Inbox.updateOne(
+        { _id: inboxId },
+        {
+          $set: {
+            lastActivity: {
+              chat_id: chat._id,
+              message: chat.message,
+              timestamp: new Date(),
+              messageStatus: 'sent',
+              sentBy: chat.sentBy,
+            },
+          } as any,
+        }
+      )
       console.log(
         // @ts-ignore
         socket.jwtPayload.username,
@@ -242,8 +247,6 @@ export const messageDelivered = async (socket: Socket, io: any, data: any) => {
     },
   })
   // update chat document and inbox lastActivities
-  // TODO: update only if message status in sent
-  // TODO: make sure that the user have right to do these changes
   await Chat.updateOne(
     {
       _id: chatId,
@@ -263,7 +266,108 @@ export const messageDelivered = async (socket: Socket, io: any, data: any) => {
       },
     },
     {
-      $set: { lastActivity: { messageStatus: 'delivered' } },
+      $set: { 'lastActivity.messageStatus': 'delivered' },
     } as any
+  )
+}
+
+export const messageSeen = async (socket: Socket, io: any, data: any) => {
+  // @ts-ignore
+  const userId = socket.jwtPayload._id
+  console.log('message seen event')
+  const {
+    inbox: { _id: inboxId },
+    chat: { _id: chatId },
+  } = data
+  // TODO: make sure that chat.sentBy is different from userId
+  const chat = await Chat.findOne({ _id: chatId })
+  if (
+    !chat ||
+    chat.sentBy.toString() === userId ||
+    chat.messageStatus === 'seen'
+  )
+    return
+  const inbox = await Inbox.findOne({ _id: inboxId })
+  if (!inbox || inbox.participants.length > 2) return
+  if (chat.sentTo.toString() !== inboxId) return
+  const isUserAParticipant = inbox.participants.find(
+    //@ts-ignore
+    (v: any) => v._id.toString() === userId
+  )
+  if (!isUserAParticipant) return
+  const otherParticipantId = inbox.participants
+    .filter((v: any) => v._id.toString() !== userId)[0]
+    ._id.toString()
+  // tell the message sender that the message is delivered
+  // read receipts are only for private chats not for groups that's why otherParticipants[0]
+  io.to(otherParticipantId).emit('message-seen', {
+    chat: {
+      _id: chatId,
+      sentTo: inboxId,
+    },
+  })
+  // update chat document and inbox lastActivities
+  await Chat.updateOne(
+    {
+      _id: chatId,
+      messageStatus: { $ne: 'seen' },
+    },
+    {
+      $set: { messageStatus: 'seen' },
+    } as any
+  )
+  if (inbox.lastActivity.messageStatus === 'seen') return
+  await Inbox.updateOne(
+    {
+      _id: inboxId,
+      lastActivity: {
+        chat_id: chatId,
+        messageStatus: { $ne: 'seen' },
+      },
+    },
+    {
+      $set: { 'lastActivity.messageStatus': 'seen' },
+    } as any
+  )
+}
+
+export const messageSeenAll = async (socket: Socket, io: any, data: any) => {
+  // tell the other user that all the message they sent are seen
+  // @ts-ignore
+  const userId = socket.jwtPayload._id
+  const { inboxId } = data
+
+  const inbox: any = await Inbox.findOne({ _id: inboxId })
+  if (!inbox && inbox.participants > 2) return
+  const isUserAParticipant = inbox.participants.find(
+    //@ts-ignore
+    (v: any) => v._id.toString() === userId
+  )
+
+  if (!isUserAParticipant) return
+
+  if (
+    inbox.lastActivity.messageStatus === 'delivered' &&
+    inbox.lastActivity.sentBy !== userId
+  ) {
+    // socket emit to user
+    const otherParticipantId = inbox.participants
+      .filter((v: any) => v._id.toString() !== userId)[0]
+      ._id.toString()
+    socket.to(otherParticipantId).emit('message-seen-all', { inboxId })
+    // messages are seen by this user so update inbox lastActivities and chats
+    await Inbox.updateOne(
+      { _id: inboxId, 'lastActivity.messageStatus': 'delivered' },
+      {
+        $set: { 'lastActivity.messageStatus': 'seen' } as any,
+      }
+    )
+  }
+
+  await Chat.updateMany(
+    { sentTo: inboxId, sentBy: { $ne: userId }, messageStatus: 'delivered' },
+    {
+      $set: { messageStatus: 'seen' } as any,
+    }
   )
 }

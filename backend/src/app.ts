@@ -5,24 +5,16 @@ import cloudinary from 'cloudinary'
 const cloudinaryV2 = cloudinary.v2
 import cors from 'cors'
 import cookieParser from 'cookie-parser'
-import { auth, authInSocketIO } from './middleware/auth'
+import { authInSocketIO } from './middleware/auth'
 import { corsOptions } from './utils/utilVariables'
 import { Server } from 'socket.io'
 import {
-  login,
-  logout,
-  signup,
-  userDetails,
-} from './controllers/userController'
-import {
-  chat,
   getInboxes,
-  inboxByUserId,
   message,
   messageDelivered,
+  messageSeen,
+  messageSeenAll,
 } from './controllers/chatSystemController'
-import { followUnfollow } from './controllers/followUnfollowController'
-import { profilePage } from './controllers/profilePageController'
 import {
   handleUserConnect,
   handleUserDisconnect,
@@ -32,6 +24,8 @@ import chatRoute from './routes/chat'
 import followUnfollowRoute from './routes/followUnfollow'
 import profilePageRoute from './routes/profilePage'
 import userRoute from './routes/user'
+import Inbox from './models/inbox'
+import Chat from './models/chat'
 const app: Application = express()
 app.use(cors(corsOptions))
 app.use(express.json({ limit: '20mb' }))
@@ -49,6 +43,8 @@ const io = new Server(4001, { cors: corsOptions })
 io.use(authInSocketIO)
 
 io.on('connection', async (socket) => {
+  // @ts-ignore
+  const userId = socket.jwtPayload._id
   // online status of users
   handleUserConnect(socket, io)
   socket.on('disconnect', () => handleUserDisconnect(socket, io))
@@ -56,7 +52,42 @@ io.on('connection', async (socket) => {
   socket.on('get-inboxes', (data, callback) => getInboxes(socket, io, callback))
   socket.on('message', (data, callback) => message(socket, io, data, callback))
   socket.on('message-delivered', (data) => messageDelivered(socket, io, data))
-  socket.on('message-seen', async (data) => {})
+  socket.on('message-seen', async (data) => messageSeen(socket, io, data))
+  socket.on('message-seen-all', async (data) =>
+    messageSeenAll(socket, io, data)
+  )
+
+  // telling other users that all messages they sent are delivered happens in online-status event
+  // TODO: read receipts isn't available for groups
+  // $size: 2
+  // tell users who are subscribed to online-status of this user that their messages are delivered
+  const inboxFilter = {
+    participants: { $elemMatch: { _id: userId } },
+    'lastActivity.messageStatus': 'sent',
+    'lastActivity.sentBy': { $ne: userId },
+  }
+  const inboxes: any = await Inbox.find(inboxFilter)
+  // messages are delivered to this user so update inbox lastActivities and chats
+  await Inbox.updateMany(
+    { inboxFilter },
+    {
+      $set: { 'lastActivity.messageStatus': 'delivered' } as any,
+    }
+  )
+  const inboxIds = inboxes.map((v: any) => {
+    return {
+      sentTo: v._id,
+      messageStatus: 'sent',
+      sentBy: { $ne: userId },
+    }
+  })
+  if (inboxIds.length === 0) return
+  await Chat.updateMany(
+    { $or: inboxIds },
+    {
+      $set: { messageStatus: 'delivered' } as any,
+    }
+  )
 })
 // socket.io - end
 
