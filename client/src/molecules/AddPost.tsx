@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import styled from 'styled-components'
 import { Button } from '../atoms/Buttons/Buttons'
 import { CropIcon, UploadImageVideoIcon } from '../atoms/Icons/Icons'
-import UsernameWithImage from '../atoms/layouts/UsernameWithImage'
+import { UsernameWithImage } from '../atoms/layouts/UsernameWithImage'
 import { transformCloudinaryImage } from '../utils/utilFunctions'
 import { DOMAIN } from '../utils/utilVariables'
 

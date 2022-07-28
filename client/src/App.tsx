@@ -1,24 +1,47 @@
-import React, { useEffect, useRef } from 'react'
+import React from 'react'
 import styled from 'styled-components'
 import './App.css'
-import axios from 'axios'
-import { Button } from './atoms/Buttons/Buttons'
-import { Outlet, useNavigate } from 'react-router-dom'
-import { DOMAIN } from './utils/utilVariables'
+import { Outlet } from 'react-router-dom'
 import Navbar from './molecules/Navbar'
 //@ts-ignore
 const App: any = ({ userDetails, setUserDetails }) => {
   return (
-    <div className="App">
+    <StyledApp>
+      {/* <div className="nav">home</div>
+      <div className="main">
+        Lorem ipsum dolor sit amet consectetur adipisicing elit. Qui tenetur
+        animi illo harum quia accusantium quas eum? At quisquam doloribus
+        voluptatem excepturi harum dolor porro quibusdam fugiat eligendi non,
+        numquam nam, temporibus quidem! Provident deserunt aliquid explicabo ea
+        illum perferendis sequi suscipit itaque dolorum quasi. Nihil rem natus
+        eos hic! lorem1000
+      </div> */}
       <Navbar userDetails={userDetails} setUserDetails={setUserDetails} />
-      <h1>{userDetails.username}</h1>
-      <p>{userDetails._id}</p>
+      <UserData>
+        <h1>{userDetails.username}</h1>
+        <p>{userDetails._id}</p>
+      </UserData>
       <Outlet />
-    </div>
+    </StyledApp>
   )
 }
 
 export default App
+
+const StyledApp = styled.div`
+  height: 100vh;
+  overflow-y: scroll;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  .main {
+    background: tomato;
+  }
+`
+const UserData = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+`
 
 export const Or: React.FC = () => {
   return (

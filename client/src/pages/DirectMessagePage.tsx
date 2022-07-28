@@ -1,19 +1,32 @@
 import produce from 'immer'
-import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, Route, Routes, useParams } from 'react-router-dom'
 import styled from 'styled-components'
 import { Container } from '../atoms/Boxes/Container'
-import UsernameWithImage from '../atoms/layouts/UsernameWithImage'
+import { Button } from '../atoms/Buttons/Buttons'
+import { NewChatIcon } from '../atoms/Icons/Icons'
+import {
+  DeliveredIcon,
+  PendingIcon,
+  SeenIcon,
+  SentIcon,
+} from '../atoms/IconsAndImages/ReadReceipts'
+import {
+  ImageGroup,
+  UsernameWithImage,
+} from '../atoms/layouts/UsernameWithImage'
+import MessageStatusC from '../atoms/MessageStatus/MessageStatus'
 import ChatBox from '../molecules/ChatBox'
 import { socket } from '../SocketIO'
 import { transformCloudinaryImage } from '../utils/utilFunctions'
 
 const DirectMessagePage = ({ userDetails, chats, setChats }: any) => {
+  const params = useParams()
   const [inboxes, setInboxes] = useState<any>([])
   const [chatUserDetails, setChatUserDetails] = useState<any>({})
-
+  console.log('chatUserDetails', chatUserDetails)
   useEffect(() => {
-    console.log('connect to socket')
+    console.log('connect to socket', socket)
     socket.connect()
     socket.emit('get-inboxes', {}, (fetchedInboxes: any) => {
       console.log('get-inboxes', fetchedInboxes)
@@ -40,6 +53,7 @@ const DirectMessagePage = ({ userDetails, chats, setChats }: any) => {
       }
       setInboxes(modifiedInboxes)
     })
+    console.log(socket)
   }, [userDetails._id, setInboxes, setChats])
   useEffect(() => {
     socket.off('online-status')
@@ -89,34 +103,163 @@ const DirectMessagePage = ({ userDetails, chats, setChats }: any) => {
       }
     })
   }, [inboxes, setInboxes, setChats, userDetails._id])
+  const inboxAndParticipantData = useMemo(() => {
+    const temp: any = {
+      participantData: {},
+      inboxData: {
+        group: {},
+      },
+    }
+    if (!params.inboxId || inboxes.length === 0) return temp
+    const inboxIndex = inboxes.findIndex((v: any) => v._id === params.inboxId)
+    if (inboxes[inboxIndex]?.group?.isGroup) {
+      temp.inboxData.group = {
+        isGroup: true,
+        groupName: inboxes[inboxIndex].group.groupName,
+      }
+    }
+    inboxes[inboxIndex].participants.forEach((v: any) => {
+      temp.participantData[v._id] = chatUserDetails[v._id]
+    })
+    return temp
+  }, [params.inboxId, chatUserDetails, inboxes])
   return (
     <StyledContainer>
-      <Inbox>
-        {inboxes.map((v: any) => (
-          <Link to={'/inbox/' + v._id} key={v._id}>
-            <Temp
-              image={transformCloudinaryImage(
-                v.participants[0].profilePicture,
-                'w_56'
-              )}
-              username={v.participants[0].name}
-              online={v.participants[0].online}
-            />
-          </Link>
-        ))}
-      </Inbox>
+      <UsernameAndNewChat>
+        <Username>{userDetails.username}</Username>
+        <NewChatButton>
+          <NewChatIcon />
+        </NewChatButton>
+      </UsernameAndNewChat>
+      <InboxList>
+        {inboxes.map((inbox: any) => {
+          const isGroup = inbox?.inboxData?.group?.isGroup
+          return (
+            <>
+              <Inbox
+                to={'/inbox/' + inbox._id}
+                key={inbox._id}
+                group={isGroup}
+                online={inbox.participants[0].online}
+              >
+                <ProfilePic>
+                  {isGroup ? (
+                    <ImageGroup
+                      image1={inbox.participants[0].profilePicture}
+                      image2={inbox.participants[1].profilePicture}
+                      imageWidth="40px"
+                    />
+                  ) : (
+                    <img
+                      src={transformCloudinaryImage(
+                        inbox.participants[0].profilePicture,
+                        'w_56'
+                      )}
+                      alt={inbox.participants[0].username}
+                    />
+                  )}
+                </ProfilePic>
+                <InboxName>
+                  {isGroup ? inbox.group.groupName : inbox.participants[0].name}
+                </InboxName>
 
-      {Object.keys(socket).length > 0 && (
-        <ChatBox
-          {...{
-            chats,
-            chatUserDetails,
-            setChats,
-            userDetails,
-            setInboxes,
-          }}
-        />
-      )}
+                {inbox.lastActivity.sentBy === userDetails._id && (
+                  <StyledMessageStatus
+                    messageStatus={inbox.lastActivity.messageStatus}
+                  />
+                )}
+                <Message>{inbox.lastActivity.message}</Message>
+                {/* TODO: message sent or received secs/mins/days/weeks ago */}
+                {/* </LastActivity> */}
+              </Inbox>
+              <Inbox
+                to={'/inbox/' + inbox._id}
+                key={inbox._id}
+                online={inbox.participants[0].online}
+              >
+                <ProfilePic>
+                  <img
+                    src={transformCloudinaryImage(
+                      inbox.participants[0].profilePicture,
+                      'w_56'
+                    )}
+                    alt={inbox.participants[0].username}
+                  />
+                </ProfilePic>
+                <Username>{inbox.participants[0].name}</Username>
+                {/* <LastActivity> */}
+                {inbox.lastActivity.sentBy === userDetails._id && (
+                  <MessageStatus>
+                    {inbox.lastActivity.messageStatus || 'hello'}
+                  </MessageStatus>
+                )}
+                <Message>{inbox.lastActivity.message}</Message>
+                {/* TODO: message sent or received secs/mins/days/weeks ago */}
+                {/* </LastActivity> */}
+              </Inbox>
+              <Inbox
+                to={'/inbox/' + inbox._id}
+                key={inbox._id}
+                online={inbox.participants[0].online}
+              >
+                <ProfilePic>
+                  <img
+                    src={transformCloudinaryImage(
+                      inbox.participants[0].profilePicture,
+                      'w_56'
+                    )}
+                    alt={inbox.participants[0].username}
+                  />
+                </ProfilePic>
+                <Username>{inbox.participants[0].name}</Username>
+                {/* <LastActivity> */}
+                {inbox.lastActivity.sentBy === userDetails._id && (
+                  <MessageStatus>
+                    {inbox.lastActivity.messageStatus || 'hello'}
+                  </MessageStatus>
+                )}
+                <Message>{inbox.lastActivity.message}</Message>
+                {/* TODO: message sent or received secs/mins/days/weeks ago */}
+                {/* </LastActivity> */}
+              </Inbox>
+              <Inbox
+                to={'/inbox/' + inbox._id}
+                key={inbox._id}
+                online={inbox.participants[0].online}
+              >
+                <ProfilePic>
+                  <img
+                    src={transformCloudinaryImage(
+                      inbox.participants[0].profilePicture,
+                      'w_56'
+                    )}
+                    alt={inbox.participants[0].username}
+                  />
+                </ProfilePic>
+                <Username>{inbox.participants[0].name}</Username>
+                {/* <LastActivity> */}
+                {inbox.lastActivity.sentBy === userDetails._id && (
+                  <MessageStatus>
+                    {inbox.lastActivity.messageStatus || 'hello'}
+                  </MessageStatus>
+                )}
+                <Message>{inbox.lastActivity.message}</Message>
+                {/* TODO: message sent or received secs/mins/days/weeks ago */}
+                {/* </LastActivity> */}
+              </Inbox>
+            </>
+          )
+        })}
+      </InboxList>
+      <ChatBox
+        {...{
+          chats,
+          inboxAndParticipantData,
+          setChats,
+          userDetails,
+          setInboxes,
+        }}
+      />
     </StyledContainer>
   )
 }
@@ -125,17 +268,106 @@ export default DirectMessagePage
 
 const Temp = styled(UsernameWithImage)`
   position: relative;
-  &::after {
-    content: ${({ online }) => (online ? '"online"' : '"offline"')};
-    position: absolute;
-    top: 100%;
-    left: 10px;
+`
+const Username = styled.div``
+const InboxName = styled.div``
+const ProfilePic = styled.div``
+const MessageStatus = styled.div``
+const StyledMessageStatus = styled(MessageStatusC)``
+const Message = styled.div``
+const Inbox: any = styled(Link)`
+  display: grid;
+  align-content: center;
+  grid-template-columns: auto auto 1fr;
+  grid-template-rows: auto auto;
+  grid-template-areas:
+    'profilePic username username'
+    'profilePic messageStatus message';
+  padding: 8px 20px;
+  text-decoration: none;
+
+  ${ProfilePic} {
+    grid-area: profilePic;
+    position: relative;
+    margin-right: 12px;
+    &::after {
+      aspect-ratio: 1/1;
+      background: ${({ online, group }: any) =>
+        online && !group ? '#78de45' : '#c4c4c4'};
+      border: 4px solid #fff;
+      border-radius: 50%;
+      content: '';
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      width: 13px;
+    }
+  }
+  ${InboxName} {
+    align-self: end;
+    color: rgb(38, 38, 38);
+    font-size: 16px;
+    grid-area: username;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    /* background: dodgerblue; */
+  }
+  ${StyledMessageStatus} {
+    grid-area: messageStatus;
+    margin-right: 2px;
+    margin-top: 1px;
+  }
+  ${Message} {
+    color: rgb(142, 142, 142);
+    font-size: 14px;
+    grid-area: message;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 `
 const StyledContainer = styled(Container)`
-  display: flex;
+  background: #fff;
+  border: 1px solid rgb(219, 219, 219);
+  border-radius: 4px;
+  display: grid;
+  grid-template-columns: 350px;
+  grid-template-rows: 60px 1fr auto;
+  grid-template-areas:
+    'usernameAndChat chatBoxHeading'
+    'inboxList chats'
+    'inboxList sendMessageBox';
+  margin: 20px auto;
+  overflow: auto;
   width: 100%;
 `
-const Inbox = styled.div`
-  width: 30%;
+const InboxList = styled.div`
+  grid-area: inboxList;
+  overflow: auto;
+  border-right: 1px solid rgb(219, 219, 219);
+`
+const NewChatButton = styled.div``
+const UsernameAndNewChat = styled.div`
+  border-right: 1px solid rgb(219, 219, 219);
+  border-bottom: 1px solid rgb(219, 219, 219);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  grid-area: usernameAndChat;
+  position: relative;
+  ${Username} {
+    text-align: center;
+    color: rgb(38, 38, 38);
+    font-size: 16px;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    width: 65%;
+  }
+  ${NewChatButton} {
+    position: absolute;
+    right: 20px;
+  }
 `

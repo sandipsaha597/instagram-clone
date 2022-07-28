@@ -11,6 +11,7 @@ import {
   ProfileImg,
 } from '../atoms/Icons/Icons'
 import Logo from '../atoms/IconsAndImages/Logo'
+import { socket } from '../SocketIO'
 import { DOMAIN } from '../utils/utilVariables'
 import AddPost from './AddPost'
 
@@ -18,53 +19,51 @@ const Navbar = ({ userDetails, setUserDetails }: any) => {
   const [modalHidden, setModalHidden] = useState(true)
   const [sendPostModalHidden, setSendPostModalHidden] = useState(true)
   return (
-    <>
-      <StyledNavbar as="nav">
-        <StyledContainer>
-          <Logo />
-          <Right>
-            <ul>
-              <li>
+    <StyledNavbar>
+      <StyledContainer>
+        <Logo />
+        <Right>
+          <ul>
+            <li>
+              <Link to="/">
                 <HomeIconActive />
-              </li>
-              <li>
-                <Link to="/inbox">
-                  <DirectMessageIcon />
-                </Link>
-              </li>
-              <li>
-                <button
-                  onClick={() => setSendPostModalHidden((state) => !state)}
-                >
-                  <AddPostIcon />
-                </button>
-              </li>
-              {/* <li>Explore</li>
+              </Link>
+            </li>
+            <li>
+              <Link to="/inbox">
+                <DirectMessageIcon />
+              </Link>
+            </li>
+            <li>
+              <button onClick={() => setSendPostModalHidden((state) => !state)}>
+                <AddPostIcon />
+              </button>
+            </li>
+            {/* <li>Explore</li>
           <li>notifications</li> */}
-              <ModalButtonWrapper className="modal-button" active={modalHidden}>
-                <button
-                  type="button"
-                  onClick={() => setModalHidden((state) => !state)}
-                >
-                  {/* <ProfileImg src={userDetails.profilePicture.withVersion} /> */}
-                  <ProfileImg src="https://res.cloudinary.com/dbevmtl8a/image/upload/w_24/v1650475415/users/instagram-clone-default-dp_qilu7c" />
-                </button>
-                <Modal
-                  setUserDetails={(e: boolean) => setUserDetails(e)}
-                  hidden={modalHidden}
-                  userDetails={userDetails}
-                />
-              </ModalButtonWrapper>
-            </ul>
-          </Right>
-        </StyledContainer>
-      </StyledNavbar>
+            <ModalButtonWrapper className="modal-button" active={modalHidden}>
+              <button
+                type="button"
+                onClick={() => setModalHidden((state) => !state)}
+              >
+                {/* <ProfileImg src={userDetails.profilePicture.withVersion} /> */}
+                <ProfileImg src="https://res.cloudinary.com/dbevmtl8a/image/upload/w_24/v1650475415/users/instagram-clone-default-dp_qilu7c" />
+              </button>
+              <Modal
+                setUserDetails={(e: boolean) => setUserDetails(e)}
+                hidden={modalHidden}
+                userDetails={userDetails}
+              />
+            </ModalButtonWrapper>
+          </ul>
+        </Right>
+      </StyledContainer>
       {!sendPostModalHidden && (
         <Backdrop close={() => setSendPostModalHidden(false)}>
           <AddPost userDetails={userDetails} />
         </Backdrop>
       )}
-    </>
+    </StyledNavbar>
   )
 }
 
@@ -74,8 +73,10 @@ const ModalButtonWrapper = styled.li<any>`
     border: ${({ active }) => (active ? '1px solid #fff' : '1px solid #000')};
   }
 `
-const StyledNavbar = styled.div`
+const StyledNavbar = styled.nav`
+  background: #fff;
   border-bottom: 1px solid rgb(219, 219, 219);
+  /* grid-area: navbar; */
 `
 const StyledContainer = styled(Container)`
   display: flex;
@@ -112,6 +113,7 @@ const Modal = ({ hidden, userDetails, setUserDetails }: any) => {
       await axios.get(`${DOMAIN}/logout`)
       navigate('/')
       setUserDetails(false)
+      socket.disconnect()
     } catch (err) {
       console.log(err)
       alert('failed to logout')
