@@ -1,5 +1,5 @@
 import axios from 'axios'
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import ReactDOM from 'react-dom'
 import {
   BrowserRouter,
@@ -22,8 +22,8 @@ const Index = () => {
   const [userDetails, setUserDetails] = useState<{} | false | 'loading'>(
     'loading'
   )
+  const [inboxes, setInboxes] = useState<any>([])
   const [chats, setChats] = useState<any>({})
-  const chatFetched = useRef<any>({})
   useEffect(() => {
     ;(async () => {
       try {
@@ -91,11 +91,7 @@ const Index = () => {
         <Route
           path=":username"
           element={
-            <ProfilePage
-              userDetails={userDetails}
-              chatFetched={chatFetched}
-              setChats={setChats}
-            />
+            <ProfilePage {...{ userDetails, setChats, inboxes, setInboxes }} />
           }
         />
         <Route path="/somepost" element={<>post some</>} />
@@ -113,10 +109,13 @@ const Index = () => {
             path="/inbox"
             element={
               <DirectMessagePage
-                userDetails={userDetails}
-                chatFetched={chatFetched}
-                chats={chats}
-                setChats={setChats}
+                {...{
+                  userDetails,
+                  chats,
+                  setChats,
+                  inboxes,
+                  setInboxes,
+                }}
               />
             }
           />
@@ -124,10 +123,13 @@ const Index = () => {
             path="/inbox/:inboxId"
             element={
               <DirectMessagePage
-                userDetails={userDetails}
-                chatFetched={chatFetched}
-                chats={chats}
-                setChats={setChats}
+                {...{
+                  userDetails,
+                  chats,
+                  setChats,
+                  inboxes,
+                  setInboxes,
+                }}
               />
             }
           />

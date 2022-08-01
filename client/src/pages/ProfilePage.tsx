@@ -3,11 +3,13 @@ import axios from 'axios'
 import styled from 'styled-components'
 import { Button, Button2 } from '../atoms/Buttons/Buttons'
 import Navbar from '../molecules/Navbar'
-import { transformCloudinaryImage } from '../utils/utilFunctions'
+import { modifyInboxes, transformCloudinaryImage } from '../utils/utilFunctions'
 import { DOMAIN } from '../utils/utilVariables'
 import { Container } from './../atoms/Boxes/Container'
 import { useNavigate, useParams } from 'react-router-dom'
-const ProfilePage = ({ userDetails, setChats }: any) => {
+import produce from 'immer'
+import { socket } from '../SocketIO'
+const ProfilePage = ({ userDetails, setChats, inboxes, setInboxes }: any) => {
   const [profileDetails, setProfileDetails] = useState<any>()
 
   const params = useParams()
@@ -18,19 +20,56 @@ const ProfilePage = ({ userDetails, setChats }: any) => {
         const response = await axios.get(`${DOMAIN}/${params.username}`)
         setProfileDetails(response.data)
       } catch (error) {
-        console.log(error)
+        console.error(error)
       }
     })()
   }, [params.username])
 
   const getInbox = async () => {
-    const inbox = await axios.get(`${DOMAIN}/inbox/${profileDetails._id}`)
-    const inboxId = inbox.data.inboxDetails._id
-    setChats((chats: any) => {
-      chats.loading = false
-      chats[inboxId] = inbox.data.chats
-      return chats
+    // if the inbox already exist in the inboxes state... then just splice it from there
+    const existingInbox = inboxes.find((v: any) => {
+      return (
+        v.participants.length === 1 &&
+        v.participants[0]._id === profileDetails._id
+      )
     })
+
+    let inboxId = existingInbox?._id
+    if (existingInbox) {
+      setInboxes((inboxes: any) => {
+        return produce(inboxes, (draft: any) => {
+          const inboxIndex = draft.findIndex((v: any) => v._id === inboxId)
+          draft.splice(inboxIndex, 1)
+          draft.unshift(existingInbox)
+        })
+      })
+    } else {
+      // get inbox and chats by userId
+      const profileDetailsId = profileDetails._id
+      const response = await axios.get(`${DOMAIN}/inbox/${profileDetailsId}`)
+      const { inbox, chats: fetchedChats } = response.data
+      // subscribe to online status
+      socket.emit(
+        'subscribe-online-status',
+        {
+          userId: profileDetailsId,
+        },
+        () => false
+      )
+      inboxId = inbox._id
+      setInboxes((inboxes: any) => {
+        return produce(inboxes, (draft: any) => {
+          const modifiedInbox = modifyInboxes([inbox], userDetails._id)[0]
+          draft.unshift(modifiedInbox)
+        })
+      })
+      setChats((chats: any) => {
+        return produce(chats, (draft: any) => {
+          draft.loading = false
+          draft[inboxId] = fetchedChats
+        })
+      })
+    }
     navigate(`/inbox/${inboxId}`)
   }
 
@@ -50,9 +89,7 @@ const ProfilePage = ({ userDetails, setChats }: any) => {
         <section>
           <div className="flex username-and-edit-profile">
             <h2>{profileDetails.username}</h2>
-            {userDetails.username === profileDetails.username ? (
-              <Button2>Edit Profile</Button2>
-            ) : (
+            {userDetails.username !== profileDetails.username && (
               <>
                 <Button2 onClick={getInbox}>Message</Button2>
                 <Button widthAuto>Follow</Button>

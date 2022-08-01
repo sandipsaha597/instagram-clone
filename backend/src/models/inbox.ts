@@ -1,7 +1,6 @@
 import mongoose from 'mongoose'
 import {
   newDate,
-  numberRequiredDefaultZero,
   objectIdRequired,
   stringRequired,
 } from '../utils/utilVariables'
@@ -22,7 +21,6 @@ const inboxSchema = new mongoose.Schema({
     // TODO: use Enums in message status
     messageStatus: stringRequired,
     sentBy: objectIdRequired,
-    unseenNumber: numberRequiredDefaultZero,
   },
 })
 

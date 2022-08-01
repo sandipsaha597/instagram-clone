@@ -11,8 +11,8 @@ exports.connect = () => {
       console.log('Connected to MongoDB')
     })
     .catch((err) => {
-      console.log('Error connecting to database')
-      console.log(err)
+      console.error('Error connecting to database')
+      console.error(err)
       process.exit(1)
     })
 }

@@ -7,7 +7,7 @@ import {
 } from '../IconsAndImages/ReadReceipts'
 
 // TODO: make it messageStatus
-const MessageStatusC = ({ messageStatus, className }: any) => {
+const MessageStatus = ({ messageStatus, className }: any) => {
   return (
     <StyledMessageStatus {...{ className }}>
       {messageStatus === 'pending' ? (
@@ -24,7 +24,7 @@ const MessageStatusC = ({ messageStatus, className }: any) => {
     </StyledMessageStatus>
   )
 }
-export default MessageStatusC
+export default MessageStatus
 const StyledMessageStatus = styled.div`
   width: 16px;
 `

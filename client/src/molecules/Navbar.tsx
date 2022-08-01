@@ -111,11 +111,11 @@ const Modal = ({ hidden, userDetails, setUserDetails }: any) => {
     e.preventDefault()
     try {
       await axios.get(`${DOMAIN}/logout`)
-      navigate('/')
       setUserDetails(false)
       socket.disconnect()
+      navigate('/')
     } catch (err) {
-      console.log(err)
+      console.error(err)
       alert('failed to logout')
     }
   }

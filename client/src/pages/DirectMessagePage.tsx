@@ -1,60 +1,58 @@
 import produce from 'immer'
 import { useEffect, useMemo, useState } from 'react'
-import { Link, Route, Routes, useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import styled from 'styled-components'
 import { Container } from '../atoms/Boxes/Container'
-import { Button } from '../atoms/Buttons/Buttons'
 import { NewChatIcon } from '../atoms/Icons/Icons'
-import {
-  DeliveredIcon,
-  PendingIcon,
-  SeenIcon,
-  SentIcon,
-} from '../atoms/IconsAndImages/ReadReceipts'
 import {
   ImageGroup,
   UsernameWithImage,
 } from '../atoms/layouts/UsernameWithImage'
-import MessageStatusC from '../atoms/MessageStatus/MessageStatus'
+import MessageStatus from '../atoms/MessageStatus/MessageStatus'
 import ChatBox from '../molecules/ChatBox'
 import { socket } from '../SocketIO'
-import { transformCloudinaryImage } from '../utils/utilFunctions'
+import {
+  modifyInboxes,
+  removeDuplicates,
+  transformCloudinaryImage,
+} from '../utils/utilFunctions'
 
-const DirectMessagePage = ({ userDetails, chats, setChats }: any) => {
+const DirectMessagePage = ({
+  userDetails,
+  chats,
+  setChats,
+  inboxes,
+  setInboxes,
+}: any) => {
   const params = useParams()
-  const [inboxes, setInboxes] = useState<any>([])
   const [chatUserDetails, setChatUserDetails] = useState<any>({})
-  console.log('chatUserDetails', chatUserDetails)
   useEffect(() => {
-    console.log('connect to socket', socket)
-    socket.connect()
-    socket.emit('get-inboxes', {}, (fetchedInboxes: any) => {
-      console.log('get-inboxes', fetchedInboxes)
-      let temp: any = {}
-      fetchedInboxes.data.forEach((inbox: any) => {
-        inbox.participants.forEach((participant: any) => {
-          temp[participant._id] = {}
-          temp[participant._id].name = participant.name
-          temp[participant._id].profilePicture = participant.profilePicture
-          temp[participant._id].username = participant.username
-        })
+    let temp: any = {}
+    inboxes.forEach((inbox: any) => {
+      inbox.participants.forEach((participant: any) => {
+        temp[participant._id] = {}
+        temp[participant._id].name = participant.name
+        temp[participant._id].profilePicture = participant.profilePicture
+        temp[participant._id].username = participant.username
       })
-      setChatUserDetails(temp)
-      let modifiedInboxes = []
-      if (fetchedInboxes.data.length) {
-        modifiedInboxes = fetchedInboxes.data.map((inbox: any) => {
-          const userExcludedFromParticipants = inbox.participants.filter(
-            (v: any) => v._id !== userDetails._id
-          )
-
-          inbox.participants = userExcludedFromParticipants
-          return inbox
-        })
-      }
-      setInboxes(modifiedInboxes)
     })
-    console.log(socket)
-  }, [userDetails._id, setInboxes, setChats])
+    setChatUserDetails(temp)
+  }, [inboxes])
+  useEffect(() => {
+    socket.connect()
+  }, [])
+  useEffect(() => {
+    socket.emit('get-inboxes', {}, (fetchedInboxes: any) => {
+      const modifiedInboxes = modifyInboxes(
+        fetchedInboxes.data,
+        userDetails._id
+      )
+      setInboxes((inboxes: any) => {
+        return removeDuplicates([...inboxes, ...modifiedInboxes])
+      })
+    })
+  }, [userDetails._id, setInboxes])
+
   useEffect(() => {
     socket.off('online-status')
     socket.on('online-status', (data: any) => {
@@ -65,7 +63,6 @@ const DirectMessagePage = ({ userDetails, chats, setChats }: any) => {
       }
       // private chat inbox._id of this user and data._id
       const inboxId = inboxes.find((inbox: any) => {
-        // console.log(inbox.participants[0]._id, data._id)
         if (inbox.participants.length === 1) {
           return inbox.participants[0]._id === data._id
         }
@@ -75,17 +72,13 @@ const DirectMessagePage = ({ userDetails, chats, setChats }: any) => {
       // update onlineStatus and inbox's lastActivity
       setInboxes((inboxes: any) => {
         return produce(inboxes, (draft: any) => {
-          draft.every((inbox: any) => {
-            if (inbox._id === inboxId) {
-              inbox.participants[0].online = data.online
-              // update inbox lastActivity
-              if (data.online && inbox.lastActivity.messageStatus === 'sent') {
-                inbox.lastActivity.messageStatus = 'delivered'
-              }
-              return false
-            }
-            return true
-          })
+          const inboxIndex = draft.findIndex((v: any) => v._id === inboxId)
+          const inbox = draft[inboxIndex]
+          inbox.participants[0].online = data.online
+          // update inbox lastActivity
+          if (data.online && inbox.lastActivity.messageStatus === 'sent') {
+            inbox.lastActivity.messageStatus = 'delivered'
+          }
         })
       })
 
@@ -103,6 +96,7 @@ const DirectMessagePage = ({ userDetails, chats, setChats }: any) => {
       }
     })
   }, [inboxes, setInboxes, setChats, userDetails._id])
+
   const inboxAndParticipantData = useMemo(() => {
     const temp: any = {
       participantData: {},
@@ -135,119 +129,46 @@ const DirectMessagePage = ({ userDetails, chats, setChats }: any) => {
         {inboxes.map((inbox: any) => {
           const isGroup = inbox?.inboxData?.group?.isGroup
           return (
-            <>
-              <Inbox
-                to={'/inbox/' + inbox._id}
-                key={inbox._id}
-                group={isGroup}
-                online={inbox.participants[0].online}
-              >
-                <ProfilePic>
-                  {isGroup ? (
-                    <ImageGroup
-                      image1={inbox.participants[0].profilePicture}
-                      image2={inbox.participants[1].profilePicture}
-                      imageWidth="40px"
-                    />
-                  ) : (
-                    <img
-                      src={transformCloudinaryImage(
-                        inbox.participants[0].profilePicture,
-                        'w_56'
-                      )}
-                      alt={inbox.participants[0].username}
+            <Inbox
+              to={'/inbox/' + inbox._id}
+              key={inbox._id}
+              group={isGroup}
+              $online={inbox.participants[0].online}
+            >
+              <ProfilePic>
+                {isGroup ? (
+                  <ImageGroup
+                    image1={inbox.participants[0].profilePicture}
+                    image2={inbox.participants[1].profilePicture}
+                    imageWidth="40px"
+                  />
+                ) : (
+                  <img
+                    src={transformCloudinaryImage(
+                      inbox.participants[0].profilePicture,
+                      'w_56'
+                    )}
+                    alt={inbox.participants[0].username}
+                  />
+                )}
+              </ProfilePic>
+              <InboxName>
+                {isGroup ? inbox.group.groupName : inbox.participants[0].name}
+              </InboxName>
+
+              {inbox.lastActivity.message !== '' && (
+                <>
+                  {inbox.lastActivity.sentBy === userDetails._id && (
+                    <StyledMessageStatus
+                      messageStatus={inbox.lastActivity.messageStatus}
                     />
                   )}
-                </ProfilePic>
-                <InboxName>
-                  {isGroup ? inbox.group.groupName : inbox.participants[0].name}
-                </InboxName>
-
-                {inbox.lastActivity.sentBy === userDetails._id && (
-                  <StyledMessageStatus
-                    messageStatus={inbox.lastActivity.messageStatus}
-                  />
-                )}
-                <Message>{inbox.lastActivity.message}</Message>
-                {/* TODO: message sent or received secs/mins/days/weeks ago */}
-                {/* </LastActivity> */}
-              </Inbox>
-              <Inbox
-                to={'/inbox/' + inbox._id}
-                key={inbox._id}
-                online={inbox.participants[0].online}
-              >
-                <ProfilePic>
-                  <img
-                    src={transformCloudinaryImage(
-                      inbox.participants[0].profilePicture,
-                      'w_56'
-                    )}
-                    alt={inbox.participants[0].username}
-                  />
-                </ProfilePic>
-                <Username>{inbox.participants[0].name}</Username>
-                {/* <LastActivity> */}
-                {inbox.lastActivity.sentBy === userDetails._id && (
-                  <MessageStatus>
-                    {inbox.lastActivity.messageStatus || 'hello'}
-                  </MessageStatus>
-                )}
-                <Message>{inbox.lastActivity.message}</Message>
-                {/* TODO: message sent or received secs/mins/days/weeks ago */}
-                {/* </LastActivity> */}
-              </Inbox>
-              <Inbox
-                to={'/inbox/' + inbox._id}
-                key={inbox._id}
-                online={inbox.participants[0].online}
-              >
-                <ProfilePic>
-                  <img
-                    src={transformCloudinaryImage(
-                      inbox.participants[0].profilePicture,
-                      'w_56'
-                    )}
-                    alt={inbox.participants[0].username}
-                  />
-                </ProfilePic>
-                <Username>{inbox.participants[0].name}</Username>
-                {/* <LastActivity> */}
-                {inbox.lastActivity.sentBy === userDetails._id && (
-                  <MessageStatus>
-                    {inbox.lastActivity.messageStatus || 'hello'}
-                  </MessageStatus>
-                )}
-                <Message>{inbox.lastActivity.message}</Message>
-                {/* TODO: message sent or received secs/mins/days/weeks ago */}
-                {/* </LastActivity> */}
-              </Inbox>
-              <Inbox
-                to={'/inbox/' + inbox._id}
-                key={inbox._id}
-                online={inbox.participants[0].online}
-              >
-                <ProfilePic>
-                  <img
-                    src={transformCloudinaryImage(
-                      inbox.participants[0].profilePicture,
-                      'w_56'
-                    )}
-                    alt={inbox.participants[0].username}
-                  />
-                </ProfilePic>
-                <Username>{inbox.participants[0].name}</Username>
-                {/* <LastActivity> */}
-                {inbox.lastActivity.sentBy === userDetails._id && (
-                  <MessageStatus>
-                    {inbox.lastActivity.messageStatus || 'hello'}
-                  </MessageStatus>
-                )}
-                <Message>{inbox.lastActivity.message}</Message>
-                {/* TODO: message sent or received secs/mins/days/weeks ago */}
-                {/* </LastActivity> */}
-              </Inbox>
-            </>
+                  <Message>{inbox.lastActivity.message}</Message>
+                </>
+              )}
+              {/* TODO: message sent or received secs/mins/days/weeks ago */}
+              {/* </LastActivity> */}
+            </Inbox>
           )
         })}
       </InboxList>
@@ -257,6 +178,7 @@ const DirectMessagePage = ({ userDetails, chats, setChats }: any) => {
           inboxAndParticipantData,
           setChats,
           userDetails,
+          inboxes,
           setInboxes,
         }}
       />
@@ -266,14 +188,10 @@ const DirectMessagePage = ({ userDetails, chats, setChats }: any) => {
 
 export default DirectMessagePage
 
-const Temp = styled(UsernameWithImage)`
-  position: relative;
-`
 const Username = styled.div``
 const InboxName = styled.div``
 const ProfilePic = styled.div``
-const MessageStatus = styled.div``
-const StyledMessageStatus = styled(MessageStatusC)``
+const StyledMessageStatus = styled(MessageStatus)``
 const Message = styled.div``
 const Inbox: any = styled(Link)`
   display: grid;
@@ -292,8 +210,8 @@ const Inbox: any = styled(Link)`
     margin-right: 12px;
     &::after {
       aspect-ratio: 1/1;
-      background: ${({ online, group }: any) =>
-        online && !group ? '#78de45' : '#c4c4c4'};
+      background: ${({ $online, group }: any) =>
+        $online && !group ? '#78de45' : '#c4c4c4'};
       border: 4px solid #fff;
       border-radius: 50%;
       content: '';

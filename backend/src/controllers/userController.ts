@@ -4,21 +4,26 @@ import jwt from 'jsonwebtoken'
 import cloudinary from 'cloudinary'
 const cloudinaryV2 = cloudinary.v2
 import User from '../models/user'
-import { cookieOptions, defaultProfilePicture } from '../utils/utilVariables'
+import { defaultProfilePicture } from '../utils/utilVariables'
+import { cookieOptions } from '../utils/utilFunctions'
 
 export const userDetails = async (req: Request, res: Response) => {
-  // TODO: don't send back sensitive info
-  // TODO: sent back news feed and unread msg count as well
-  // @ts-ignore
-  if (!!req.searchUserBy && Object.keys(req.searchUserBy)) {
-    //@ts-ignore
-    const user = await User.findOne(req.searchUserBy)
-    if (user) {
-      return res.send(user)
+  try {
+    // TODO: don't send back sensitive info
+    // TODO: sent back news feed and unread msg count as well
+    // @ts-ignore
+    if (!!req.searchUserBy && Object.keys(req.searchUserBy)) {
+      //@ts-ignore
+      const user = await User.findOne(req.searchUserBy)
+      if (user) {
+        return res.send(user)
+      }
+      res.status(204).clearCookie('token').send('hello')
+    } else {
+      res.status(401).send('wrong credentials')
     }
-    res.status(204).clearCookie('token').send('hello')
-  } else {
-    res.status(401).send('wrong credentials')
+  } catch (err) {
+    console.error(err)
   }
 }
 
@@ -47,7 +52,7 @@ export const login = async (req: Request, res: Response) => {
       )
       user.password = undefined
 
-      return res.status(200).cookie('token', token, cookieOptions).send(user)
+      return res.status(200).cookie('token', token, cookieOptions()).send(user)
     }
     return res.status(401).send('Invalid credentials')
   } catch (e) {
@@ -119,7 +124,7 @@ export const signup = async (req: Request, res: Response) => {
     )
     user.token = token
     user.password = undefined
-    res.status(201).cookie('token', token, cookieOptions).send(user)
+    res.status(201).cookie('token', token, cookieOptions()).send(user)
   } catch (e) {
     console.log(e)
 

@@ -85,66 +85,70 @@ export const like = async (req: Request, res: Response) => {
 }
 
 export const comment = async (req: Request, res: Response) => {
-  //@ts-ignore
-  if (!req.searchUserBy.username) return res.status(400).send('please log in')
+  try {
+    //@ts-ignore
+    if (!req.searchUserBy.username) return res.status(400).send('please log in')
 
-  const { _id, type, comment } = req.body
-  if (!(_id && type && comment)) return res.status(400).send('missing fields')
-  if (!isValidObjectId(_id)) return res.status(400).send('invalid objectId')
-  if (!(type === 'post' || type === 'comment' || type === 'reply'))
-    return res.status(400).send('invalid type')
+    const { _id, type, comment } = req.body
+    if (!(_id && type && comment)) return res.status(400).send('missing fields')
+    if (!isValidObjectId(_id)) return res.status(400).send('invalid objectId')
+    if (!(type === 'post' || type === 'comment' || type === 'reply'))
+      return res.status(400).send('invalid type')
 
-  let result: any
-  let parentId: string = ''
-  let resultType: 'comment' | 'reply' = 'comment'
-  if (type === 'post') {
-    result = await Post.findOneAndUpdate(
-      { _id },
-      { $inc: { commentCount: 1 } as any }
-    )
-    if (!result) return res.status(400).send(`post does not exist`)
-    parentId = result._id
-    resultType = 'comment'
-  }
-  if (type === 'comment' || type === 'reply') {
-    result = await Comment.findOne({ _id })
-    if (!result) return res.status(400).send(`comment does not exist`)
-    if (result.type === 'comment') {
-      parentId = result._id
-      const incrementReplyCount = await Comment.updateOne({ _id }, {
-        $inc: { replyCount: 1 },
-      } as any)
-    }
-    if (result.type === 'reply') {
-      parentId = result.parentId
-      const incrementReplyCount = await Comment.updateOne(
-        { _id: result.parentId },
-        {
-          $inc: { replyCount: 1 },
-        } as any
+    let result: any
+    let parentId: string = ''
+    let resultType: 'comment' | 'reply' = 'comment'
+    if (type === 'post') {
+      result = await Post.findOneAndUpdate(
+        { _id },
+        { $inc: { commentCount: 1 } as any }
       )
+      if (!result) return res.status(400).send(`post does not exist`)
+      parentId = result._id
+      resultType = 'comment'
     }
-    resultType = 'reply'
+    if (type === 'comment' || type === 'reply') {
+      result = await Comment.findOne({ _id })
+      if (!result) return res.status(400).send(`comment does not exist`)
+      if (result.type === 'comment') {
+        parentId = result._id
+        const incrementReplyCount = await Comment.updateOne({ _id }, {
+          $inc: { replyCount: 1 },
+        } as any)
+      }
+      if (result.type === 'reply') {
+        parentId = result.parentId
+        const incrementReplyCount = await Comment.updateOne(
+          { _id: result.parentId },
+          {
+            $inc: { replyCount: 1 },
+          } as any
+        )
+      }
+      resultType = 'reply'
+    }
+    // @ts-ignore
+    console.log(parentId)
+    const tempCommentObj: any = {
+      parentId,
+      type: resultType,
+      comment,
+      commentedBy: {
+        // @ts-ignore
+        username: req.searchUserBy.username,
+        // @ts-ignore
+        profilePicture: req.jwtPayload.profilePicture,
+      },
+    }
+    if (resultType === 'comment') {
+      tempCommentObj.replyCount = 0
+    }
+    const commentResult = await Comment.create(tempCommentObj)
+    console.log(commentResult)
+    res.send(commentResult)
+  } catch (err) {
+    console.error(err)
   }
-  // @ts-ignore
-  console.log(parentId)
-  const tempCommentObj: any = {
-    parentId,
-    type: resultType,
-    comment,
-    commentedBy: {
-      // @ts-ignore
-      username: req.searchUserBy.username,
-      // @ts-ignore
-      profilePicture: req.jwtPayload.profilePicture,
-    },
-  }
-  if (resultType === 'comment') {
-    tempCommentObj.replyCount = 0
-  }
-  const commentResult = await Comment.create(tempCommentObj)
-  console.log(commentResult)
-  res.send(commentResult)
 }
 
 const uploadImages = async (images: string[]) => {

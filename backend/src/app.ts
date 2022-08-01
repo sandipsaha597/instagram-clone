@@ -39,7 +39,7 @@ cloudinaryV2.config({
 
 // TODO: express server and socket.io server should be served from the same port
 //socket.io
-const io = new Server(4001, { cors: corsOptions })
+export const io = new Server(4001, { cors: corsOptions })
 io.use(authInSocketIO)
 
 io.on('connection', async (socket) => {
@@ -56,38 +56,48 @@ io.on('connection', async (socket) => {
   socket.on('message-seen-all', async (data) =>
     messageSeenAll(socket, io, data)
   )
-
-  // telling other users that all messages they sent are delivered happens in online-status event
-  // TODO: read receipts isn't available for groups
-  // $size: 2
-  // tell users who are subscribed to online-status of this user that their messages are delivered
-  const inboxFilter = {
-    participants: { $elemMatch: { _id: userId } },
-    'lastActivity.messageStatus': 'sent',
-    'lastActivity.sentBy': { $ne: userId },
-  }
-  const inboxes: any = await Inbox.find(inboxFilter)
-  // messages are delivered to this user so update inbox lastActivities and chats
-  await Inbox.updateMany(
-    { inboxFilter },
-    {
-      $set: { 'lastActivity.messageStatus': 'delivered' } as any,
-    }
-  )
-  const inboxIds = inboxes.map((v: any) => {
-    return {
-      sentTo: v._id,
-      messageStatus: 'sent',
-      sentBy: { $ne: userId },
+  socket.on('subscribe-online-status', (data: any, callback) => {
+    try {
+      socket.join('online-status_' + data.userId)
+      const rooms = io.of('/').adapter.rooms
+      callback({ online: rooms.has(data.userId) })
+    } catch (err) {
+      console.error(err)
     }
   })
-  if (inboxIds.length === 0) return
-  await Chat.updateMany(
-    { $or: inboxIds },
-    {
-      $set: { messageStatus: 'delivered' } as any,
+
+  try {
+    // telling other users that all messages they sent are delivered happens in online-status event
+    // TODO: read receipts isn't available for groups
+    // $size: 2
+    const inboxFilter = {
+      participants: { $elemMatch: { _id: userId }, $size: 2 },
+      'lastActivity.messageStatus': 'sent',
+      'lastActivity.sentBy': { $ne: userId },
     }
-  )
+    const inboxes: any = await Inbox.find(inboxFilter, { _id: 1 })
+    if (inboxes.length === 0) return
+    // messages are delivered to this user so update inbox lastActivities and chats
+    await Inbox.updateMany(inboxFilter, {
+      $set: { 'lastActivity.messageStatus': 'delivered' } as any,
+    })
+
+    const inboxIds = inboxes.map((v: any) => {
+      return {
+        sentTo: v._id,
+        messageStatus: 'sent',
+        sentBy: { $ne: userId },
+      }
+    })
+    await Chat.updateMany(
+      { $or: inboxIds },
+      {
+        $set: { messageStatus: 'delivered' } as any,
+      }
+    )
+  } catch (err) {
+    console.error(err)
+  }
 })
 // socket.io - end
 
@@ -106,7 +116,7 @@ app.delete('/deleteImage', async (req: Request, res: Response) => {
       .then((v: any) => {
         console.log(v)
       })
-      .catch((err: any) => console.log(err))
+      .catch((err: any) => console.error(err))
   }
   // }
   destroyAll()
