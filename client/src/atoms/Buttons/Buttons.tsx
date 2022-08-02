@@ -8,6 +8,7 @@ export const Button = styled.button<{ widthAuto?: boolean }>`
   font-size: 14px;
   font-weight: 600;
   padding: 5px 9px;
+  line-height: 18px;
   width: ${({ widthAuto }) => (widthAuto ? 'auto' : '100%')};
 `
 

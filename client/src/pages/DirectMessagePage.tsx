@@ -1,13 +1,10 @@
 import produce from 'immer'
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { NavLink, useParams } from 'react-router-dom'
 import styled from 'styled-components'
 import { Container } from '../atoms/Boxes/Container'
 import { NewChatIcon } from '../atoms/Icons/Icons'
-import {
-  ImageGroup,
-  UsernameWithImage,
-} from '../atoms/layouts/UsernameWithImage'
+import { ImageGroup } from '../atoms/layouts/UsernameWithImage'
 import MessageStatus from '../atoms/MessageStatus/MessageStatus'
 import ChatBox from '../molecules/ChatBox'
 import { socket } from '../SocketIO'
@@ -118,7 +115,7 @@ const DirectMessagePage = ({
     return temp
   }, [params.inboxId, chatUserDetails, inboxes])
   return (
-    <StyledContainer>
+    <StyledContainer activeInbox={!!params.inboxId}>
       <UsernameAndNewChat>
         <Username>{userDetails.username}</Username>
         <NewChatButton>
@@ -133,7 +130,11 @@ const DirectMessagePage = ({
               to={'/inbox/' + inbox._id}
               key={inbox._id}
               group={isGroup}
+              $lastMessage={inbox.lastActivity.message}
               $online={inbox.participants[0].online}
+              className={({ isActive }: any) =>
+                isActive ? 'active' : undefined
+              }
             >
               <ProfilePic>
                 {isGroup ? (
@@ -193,21 +194,30 @@ const InboxName = styled.div``
 const ProfilePic = styled.div``
 const StyledMessageStatus = styled(MessageStatus)``
 const Message = styled.div``
-const Inbox: any = styled(Link)`
+const Inbox: any = styled(NavLink)`
   display: grid;
-  align-content: center;
   grid-template-columns: auto auto 1fr;
   grid-template-rows: auto auto;
-  grid-template-areas:
-    'profilePic username username'
-    'profilePic messageStatus message';
+  grid-template-areas: ${({ $lastMessage }: any) =>
+    !!$lastMessage
+      ? `'profilePic username username'
+    'profilePic messageStatus message'`
+      : `'profilePic username username'
+    'profilePic username username'`};
+
   padding: 8px 20px;
   text-decoration: none;
-
+  &.active {
+    background: rgb(239, 239, 239);
+  }
   ${ProfilePic} {
     grid-area: profilePic;
+    height: 56px;
     position: relative;
     margin-right: 12px;
+    img {
+      border-radius: 50%;
+    }
     &::after {
       aspect-ratio: 1/1;
       background: ${({ $online, group }: any) =>
@@ -222,14 +232,14 @@ const Inbox: any = styled(Link)`
     }
   }
   ${InboxName} {
-    align-self: end;
+    align-self: ${({ $lastMessage }: any) =>
+      !!$lastMessage ? 'end' : 'center'};
     color: rgb(38, 38, 38);
     font-size: 16px;
     grid-area: username;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    /* background: dodgerblue; */
   }
   ${StyledMessageStatus} {
     grid-area: messageStatus;
@@ -245,25 +255,30 @@ const Inbox: any = styled(Link)`
     white-space: nowrap;
   }
 `
-const StyledContainer = styled(Container)`
+const StyledContainer: any = styled(Container)`
   background: #fff;
   border: 1px solid rgb(219, 219, 219);
   border-radius: 4px;
   display: grid;
   grid-template-columns: 350px;
   grid-template-rows: 60px 1fr auto;
-  grid-template-areas:
-    'usernameAndChat chatBoxHeading'
-    'inboxList chats'
-    'inboxList sendMessageBox';
+  grid-template-areas: ${({ activeInbox }: any) =>
+    activeInbox
+      ? `'usernameAndChat chatBoxHeading'
+          'inboxList chats'
+          'inboxList sendMessageBox'`
+      : `'usernameAndChat noActiveInbox'
+          'inboxList noActiveInbox'
+          'inboxList noActiveInbox'`};
   margin: 20px auto;
   overflow: auto;
   width: 100%;
 `
 const InboxList = styled.div`
-  grid-area: inboxList;
-  overflow: auto;
   border-right: 1px solid rgb(219, 219, 219);
+  grid-area: inboxList;
+  padding: 10px 0;
+  overflow: auto;
 `
 const NewChatButton = styled.div``
 const UsernameAndNewChat = styled.div`

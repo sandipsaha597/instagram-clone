@@ -144,10 +144,10 @@ export const message = async (
   data: any,
   callback: any
 ) => {
-  console.log('message event')
-  // @ts-ignore
-  const userId = socket.jwtPayload._id
   try {
+    console.log('message event')
+    // @ts-ignore
+    const userId = socket.jwtPayload._id
     const { inboxId, message, tempChatId } = data
     const fieldsValid = validateRequestBody({
       _id: inboxId,
@@ -386,14 +386,12 @@ export const messageSeenAll = async (socket: Socket, io: any, data: any) => {
     const { inboxId } = data
 
     const inbox: any = await Inbox.findOne({ _id: inboxId })
-    console.log('run1')
-    if (!inbox && inbox.participants > 2) return
+    if (!inbox || inbox.participants > 2) return
     const isUserAParticipant = inbox.participants.find(
       (v: any) => v._id.toString() === userId
     )
 
     if (!isUserAParticipant) return
-    console.log('run2', inbox.lastActivity.messageStatus)
     if (
       inbox.lastActivity.messageStatus === 'delivered' &&
       inbox.lastActivity.sentBy.toString() !== userId
@@ -403,7 +401,6 @@ export const messageSeenAll = async (socket: Socket, io: any, data: any) => {
         .filter((v: any) => v._id.toString() !== userId)[0]
         ._id.toString()
 
-      console.log(otherParticipantId)
       io.to(otherParticipantId).emit('message-seen-all', { inboxId })
       // messages are seen by this user so update inbox lastActivities and chats
       await Inbox.updateOne(

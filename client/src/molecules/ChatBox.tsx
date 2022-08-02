@@ -14,6 +14,8 @@ import { socket } from '../SocketIO'
 import { modifyInboxes, transformCloudinaryImage } from '../utils/utilFunctions'
 import { DOMAIN } from '../utils/utilVariables'
 import SendMessageBox from './SendMessageBox'
+import { Button } from '../atoms/Buttons/Buttons'
+import { DirectMessageIconCircled } from '../atoms/Icons/Icons'
 
 const ChatBox = ({
   chats,
@@ -346,7 +348,14 @@ const ChatBox = ({
 
   return (
     <>
-      {params.inboxId === undefined || chats[params.inboxId] === undefined ? (
+      {params.inboxId === undefined ? (
+        <NoActiveChatBox>
+          <DirectMessageIconCircled />
+          <h1>Your Messages</h1>
+          <p>Send private photos and messages to a friend or group.</p>
+          <Button widthAuto>Send Message</Button>
+        </NoActiveChatBox>
+      ) : chats[params.inboxId] === undefined ? (
         <h3>Loading...</h3>
       ) : (
         <>
@@ -456,6 +465,27 @@ const ChatBox = ({
 }
 
 export default ChatBox
+
+const NoActiveChatBox = styled.div`
+  grid-area: noActiveInbox;
+  align-self: center;
+  justify-self: center;
+  text-align: center;
+  h1 {
+    font-size: 22px;
+    font-weight: 300;
+    margin-top: 7px;
+  }
+  p {
+    color: rgb(142, 142, 142);
+    font-size: 14px;
+    margin-top: 6px;
+    margin-bottom: 25px;
+  }
+  ${Button} {
+    margin: auto;
+  }
+`
 
 const Heading = styled.div`
   border-bottom: 1px solid rgb(219, 219, 219);

@@ -7,9 +7,9 @@ import { isValidObjectId } from 'mongoose'
 import Like from '../models/like'
 
 export const createPost = async (req: Request, res: Response) => {
-  const { caption, images } = req.body
-  if (images.length < 1) return res.status(400).send('no image was sent')
   try {
+    const { caption, images } = req.body
+    if (images.length < 1) return res.status(400).send('no image was sent')
     // @ts-expect-error
     console.log(req.searchUserBy.username)
     // @ts-expect-error
