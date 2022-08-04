@@ -19,6 +19,8 @@ import {
   handleUserConnect,
   handleUserDisconnect,
 } from './controllers/onlineStatusController'
+import { searchUserController } from './controllers/searchUserController'
+
 import postRoute from './routes/post'
 import chatRoute from './routes/chat'
 import followUnfollowRoute from './routes/followUnfollow'
@@ -26,6 +28,7 @@ import profilePageRoute from './routes/profilePage'
 import userRoute from './routes/user'
 import Inbox from './models/inbox'
 import Chat from './models/chat'
+import searchRoute from './routes/searchUser'
 const app: Application = express()
 app.use(cors(corsOptions))
 app.use(express.json({ limit: '20mb' }))
@@ -106,6 +109,7 @@ app.use('/api', postRoute)
 app.use('/api', chatRoute)
 app.use('/api', followUnfollowRoute)
 app.use('/api', profilePageRoute)
+app.use('/api', searchRoute)
 
 app.delete('/deleteImage', async (req: Request, res: Response) => {
   const destroyAll = () => {

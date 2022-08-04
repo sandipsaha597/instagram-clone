@@ -1,12 +1,13 @@
 import produce from 'immer'
 import { useEffect, useMemo, useState } from 'react'
-import { NavLink, useParams } from 'react-router-dom'
+import { NavLink, useNavigate, useParams } from 'react-router-dom'
 import styled from 'styled-components'
 import { Container } from '../atoms/Boxes/Container'
 import { NewChatIcon } from '../atoms/Icons/Icons'
 import { ImageGroup } from '../atoms/layouts/UsernameWithImage'
 import MessageStatus from '../atoms/MessageStatus/MessageStatus'
 import ChatBox from '../molecules/ChatBox'
+import SendMessageModal from '../molecules/SendMessageModal'
 import { socket } from '../SocketIO'
 import {
   modifyInboxes,
@@ -23,6 +24,7 @@ const DirectMessagePage = ({
 }: any) => {
   const params = useParams()
   const [chatUserDetails, setChatUserDetails] = useState<any>({})
+  const navigate = useNavigate()
   useEffect(() => {
     let temp: any = {}
     inboxes.forEach((inbox: any) => {
@@ -101,19 +103,38 @@ const DirectMessagePage = ({
         group: {},
       },
     }
-    if (!params.inboxId || inboxes.length === 0) return temp
-    const inboxIndex = inboxes.findIndex((v: any) => v._id === params.inboxId)
-    if (inboxes[inboxIndex]?.group?.isGroup) {
-      temp.inboxData.group = {
-        isGroup: true,
-        groupName: inboxes[inboxIndex].group.groupName,
+    try {
+      if (!params.inboxId || inboxes.length === 0) return temp
+      const inboxIndex = inboxes.findIndex((v: any) => v._id === params.inboxId)
+      if (inboxes[inboxIndex]?.group?.isGroup) {
+        temp.inboxData.group = {
+          isGroup: true,
+          groupName: inboxes[inboxIndex].group.groupName,
+        }
       }
+      inboxes[inboxIndex].participants.forEach((v: any) => {
+        temp.participantData[v._id] = chatUserDetails[v._id]
+      })
+      return temp
+    } catch (err) {
+      console.log(err)
+      navigate('/inbox', { replace: true })
     }
-    inboxes[inboxIndex].participants.forEach((v: any) => {
-      temp.participantData[v._id] = chatUserDetails[v._id]
-    })
     return temp
-  }, [params.inboxId, chatUserDetails, inboxes])
+  }, [params.inboxId, chatUserDetails, inboxes, navigate])
+  const suggestedUsers = useMemo(() => {
+    const temp = []
+    const keys = Object.keys(chatUserDetails)
+    for (let i = 0; i < Math.min(11, keys.length); i++) {
+      const { name, username, profilePicture } = chatUserDetails[keys[i]]
+      temp.push({
+        name,
+        username,
+        profilePicture,
+      })
+    }
+    return temp
+  }, [chatUserDetails])
   return (
     <StyledContainer activeInbox={!!params.inboxId}>
       <UsernameAndNewChat>
@@ -183,6 +204,7 @@ const DirectMessagePage = ({
           setInboxes,
         }}
       />
+      <SendMessageModal {...{ suggestedUsers }} />
     </StyledContainer>
   )
 }

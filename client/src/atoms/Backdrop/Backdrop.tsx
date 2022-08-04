@@ -5,7 +5,7 @@ const Backdrop = ({ children, close }: any) => {
   return (
     <StyledBackdrop>
       <CloseModalButton onClick={close}>
-        <CloseIcon />
+        <CloseIcon widthAndHeight={24} color="#fff" />
       </CloseModalButton>
       {children}
     </StyledBackdrop>

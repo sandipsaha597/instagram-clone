@@ -14,7 +14,7 @@ export const LinkText = styled(Link)<any>`
 `
 
 export const Text1 = styled.p`
-  color: hsl(0, 0%, 14.901960784313726%);
+  color: rgb(38, 38, 38);
   font-size: 14px;
   margin: 0;
   text-align: center;

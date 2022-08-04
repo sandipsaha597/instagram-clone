@@ -1,11 +1,10 @@
-import React from 'react'
 import styled from 'styled-components'
 
 export const UsernameWithImage = ({ image, username, className }: any) => {
   return (
     <StyledUsernameWithImage className={className}>
       <img src={image} alt={username} />
-      <Name>{username}</Name>
+      <Username>{username}</Username>
     </StyledUsernameWithImage>
   )
 }
@@ -18,7 +17,25 @@ export const UsernameWithImageGroup = ({
 }: any) => {
   return (
     <StyledUsernameWithImage className={className}>
-      <Name>{groupName}</Name>
+      <Username>{groupName}</Username>
+    </StyledUsernameWithImage>
+  )
+}
+
+export const NameUsernameWithImage = ({
+  image,
+  username,
+  name,
+  className,
+  onClick,
+}: any) => {
+  return (
+    <StyledUsernameWithImage className={className} onClick={onClick}>
+      <img src={image} alt={username} />
+      <Right>
+        <Username>{username}</Username>
+        <Name>{name}</Name>
+      </Right>
     </StyledUsernameWithImage>
   )
 }
@@ -39,11 +56,24 @@ const StyledUsernameWithImage = styled.div`
     margin-right: 12px;
   }
 `
-const Name = styled.div`
+const Right = styled.div`
+  display: flex;
+  align-items: flex-start;
+  flex-direction: column;
+`
+const Username = styled.div`
   color: rgb(38, 38, 38);
   font-size: 16px;
   font-weight: 600;
   text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`
+const Name = styled.div`
+  color: rgb(142, 142, 142);
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 `
 const Image1 = styled.img``
 const Image2 = styled.img``

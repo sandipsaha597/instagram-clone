@@ -1,7 +1,7 @@
 import axios from 'axios'
 import produce from 'immer'
-import { useCallback, useEffect, useRef } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import styled from 'styled-components'
 
 import { flushSync } from 'react-dom'
@@ -27,6 +27,7 @@ const ChatBox = ({
 }: any) => {
   const messageInputRef = useRef<any>()
   const chatsRef = useRef<any>()
+  console.log(messageInputRef)
 
   const params = useParams()
   const navigate = useNavigate()
@@ -336,6 +337,7 @@ const ChatBox = ({
 
     messageInputRef.current.value = ''
   }
+
   const firstParticipant =
     inboxAndParticipantData.participantData?.[
       Object.keys(inboxAndParticipantData.participantData)[0]
@@ -352,7 +354,7 @@ const ChatBox = ({
         <NoActiveChatBox>
           <DirectMessageIconCircled />
           <h1>Your Messages</h1>
-          <p>Send private photos and messages to a friend or group.</p>
+          <p>Send private messages to a friend or group.</p>
           <Button widthAuto>Send Message</Button>
         </NoActiveChatBox>
       ) : chats[params.inboxId] === undefined ? (

@@ -34,6 +34,7 @@ button:disabled {
   cursor: no-drop;
   opacity: 0.5;
 }
+input,
 textarea {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica,
     Arial, sans-serif;
