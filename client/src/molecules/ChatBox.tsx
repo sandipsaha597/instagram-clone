@@ -6,6 +6,7 @@ import styled from 'styled-components'
 
 import { flushSync } from 'react-dom'
 import {
+  ImageGroup,
   UsernameWithImage,
   UsernameWithImageGroup,
 } from '../atoms/layouts/UsernameWithImage'
@@ -24,10 +25,10 @@ const ChatBox = ({
   userDetails,
   inboxes,
   setInboxes,
+  setModalOpen,
 }: any) => {
   const messageInputRef = useRef<any>()
   const chatsRef = useRef<any>()
-  console.log(messageInputRef)
 
   const params = useParams()
   const navigate = useNavigate()
@@ -355,7 +356,9 @@ const ChatBox = ({
           <DirectMessageIconCircled />
           <h1>Your Messages</h1>
           <p>Send private messages to a friend or group.</p>
-          <Button widthAuto>Send Message</Button>
+          <Button widthAuto onClick={() => setModalOpen(true)}>
+            Send Message
+          </Button>
         </NoActiveChatBox>
       ) : chats[params.inboxId] === undefined ? (
         <h3>Loading...</h3>
@@ -375,12 +378,14 @@ const ChatBox = ({
                           inboxAndParticipantData.participantData[v].username
                         )
                       })
-                      // alert()
+                      alert(arr.join('\n'))
                     }}
                   >
                     <UsernameWithImageGroup
-                      image1={firstParticipant?.profilePicture}
-                      image2={secondParticipant?.profilePicture}
+                      // image1={firstParticipant?.profilePicture}
+                      // image2={secondParticipant?.profilePicture}
+                      // imageWidth="20px"
+                      // imageGroupContainerWidth="32px"
                       groupName={
                         inboxAndParticipantData.inboxData.group.groupName
                       }

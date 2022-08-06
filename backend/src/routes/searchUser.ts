@@ -1,7 +1,7 @@
 import express from 'express'
 import {
   chat,
-  inboxAndChatsByUserId,
+  inboxAndChatsByUserIds,
 } from '../controllers/chatSystemController'
 import { searchUserController } from '../controllers/searchUserController'
 import { auth } from '../middleware/auth'

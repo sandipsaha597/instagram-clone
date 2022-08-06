@@ -10,6 +10,7 @@ import ChatBox from '../molecules/ChatBox'
 import SendMessageModal from '../molecules/SendMessageModal'
 import { socket } from '../SocketIO'
 import {
+  getAndSetInbox,
   modifyInboxes,
   removeDuplicates,
   transformCloudinaryImage,
@@ -23,6 +24,7 @@ const DirectMessagePage = ({
   setInboxes,
 }: any) => {
   const params = useParams()
+  const [modalOpen, setModalOpen] = useState(false)
   const [chatUserDetails, setChatUserDetails] = useState<any>({})
   const navigate = useNavigate()
   useEffect(() => {
@@ -51,7 +53,7 @@ const DirectMessagePage = ({
       })
     })
   }, [userDetails._id, setInboxes])
-
+  console.log(inboxes)
   useEffect(() => {
     socket.off('online-status')
     socket.on('online-status', (data: any) => {
@@ -106,7 +108,7 @@ const DirectMessagePage = ({
     try {
       if (!params.inboxId || inboxes.length === 0) return temp
       const inboxIndex = inboxes.findIndex((v: any) => v._id === params.inboxId)
-      if (inboxes[inboxIndex]?.group?.isGroup) {
+      if (inboxes[inboxIndex].group.isGroup) {
         temp.inboxData.group = {
           isGroup: true,
           groupName: inboxes[inboxIndex].group.groupName,
@@ -128,6 +130,7 @@ const DirectMessagePage = ({
     for (let i = 0; i < Math.min(11, keys.length); i++) {
       const { name, username, profilePicture } = chatUserDetails[keys[i]]
       temp.push({
+        _id: keys[i],
         name,
         username,
         profilePicture,
@@ -139,18 +142,18 @@ const DirectMessagePage = ({
     <StyledContainer activeInbox={!!params.inboxId}>
       <UsernameAndNewChat>
         <Username>{userDetails.username}</Username>
-        <NewChatButton>
+        <NewChatButton onClick={() => setModalOpen(true)}>
           <NewChatIcon />
         </NewChatButton>
       </UsernameAndNewChat>
       <InboxList>
         {inboxes.map((inbox: any) => {
-          const isGroup = inbox?.inboxData?.group?.isGroup
+          const isGroup = inbox.group.isGroup
           return (
             <Inbox
               to={'/inbox/' + inbox._id}
               key={inbox._id}
-              group={isGroup}
+              $group={isGroup}
               $lastMessage={inbox.lastActivity.message}
               $online={inbox.participants[0].online}
               className={({ isActive }: any) =>
@@ -163,6 +166,7 @@ const DirectMessagePage = ({
                     image1={inbox.participants[0].profilePicture}
                     image2={inbox.participants[1].profilePicture}
                     imageWidth="40px"
+                    containerWidth="56px"
                   />
                 ) : (
                   <img
@@ -202,9 +206,25 @@ const DirectMessagePage = ({
           userDetails,
           inboxes,
           setInboxes,
+          setModalOpen,
         }}
       />
-      <SendMessageModal {...{ suggestedUsers }} />
+      <SendMessageModal
+        open={modalOpen}
+        setOpen={setModalOpen}
+        handleNextClick={(selected: any[]) => {
+          getAndSetInbox(
+            selected.map((v: any) => v._id),
+            userDetails,
+            inboxes,
+            setInboxes,
+            setChats,
+            navigate,
+            () => setModalOpen(false)
+          )
+        }}
+        {...{ suggestedUsers }}
+      />
     </StyledContainer>
   )
 }
@@ -242,11 +262,11 @@ const Inbox: any = styled(NavLink)`
     }
     &::after {
       aspect-ratio: 1/1;
-      background: ${({ $online, group }: any) =>
-        $online && !group ? '#78de45' : '#c4c4c4'};
+      background: ${({ $online }: any) => ($online ? '#78de45' : '#c4c4c4')};
       border: 4px solid #fff;
       border-radius: 50%;
       content: '';
+      display: ${({ $group }: any) => ($group ? 'none' : 'block')};
       position: absolute;
       bottom: 0;
       right: 0;
@@ -302,7 +322,7 @@ const InboxList = styled.div`
   padding: 10px 0;
   overflow: auto;
 `
-const NewChatButton = styled.div``
+const NewChatButton = styled.button``
 const UsernameAndNewChat = styled.div`
   border-right: 1px solid rgb(219, 219, 219);
   border-bottom: 1px solid rgb(219, 219, 219);

@@ -1,13 +1,15 @@
 import express from 'express'
 import {
   chat,
-  inboxAndChatsByUserId,
+  inboxAndChatsByUserIds,
 } from '../controllers/chatSystemController'
 import { auth } from '../middleware/auth'
 const chatRoute = express.Router()
 
 // messaging from profile page
-chatRoute.route('/inbox/:userId').get(auth, inboxAndChatsByUserId)
+chatRoute
+  .route('/inbox/inboxAndChatsByUserIds')
+  .get(auth, inboxAndChatsByUserIds)
 
 chatRoute.route('/chat/:inboxId').get(auth, chat)
 

@@ -7,20 +7,58 @@ import Inbox from '../models/inbox'
 import User from '../models/user'
 import { validateRequestBody } from '../utils/utilFunctions'
 
-export const inboxAndChatsByUserId = async (req: Request, res: Response) => {
+export const inboxAndChatsByUserIds = async (req: Request, res: Response) => {
   try {
-    const user = await User.findOne({ _id: req.params.userId })
-    if (!user) throw new Error('user does not exist')
+    // @ts-ignore
+    const userOwnId = req.jwtPayload._id
+    const userIds: string[] = (req.query.userIds || []) as string[]
+
+    if (!userIds || userIds.length === 0) throw new Error('no userId given')
+
+    // every id should be unique
+    const tempSet = new Set(userIds)
+    if (tempSet.has(userOwnId) || userIds.length !== tempSet.size) {
+      throw new Error(
+        "userIds contains user's or own id  every id should be unique"
+      )
+    }
+
     let inbox = await Inbox.findOne({
+      participants: { $size: userIds.length + 1 },
       //@ts-ignore
-      'participants._id': { $all: [req.jwtPayload._id, req.params.userId] },
-      participants: { $size: 2 },
+      'participants._id': { $all: [req.jwtPayload._id, ...userIds] },
     })
     let chats = []
     if (inbox) {
       chats = await Chat.find({ sentTo: inbox._id })
     }
     if (inbox === null) {
+      // every user in userIds should exist
+      const users: any = await User.find(
+        {
+          _id: { $in: userIds },
+        },
+        { _id: 1, name: 1, username: 1, profilePicture: 1 }
+      )
+
+      console.log(users)
+
+      if (users.length !== userIds.length)
+        throw new Error('one or more user does not exist')
+
+      const inboxParticipantsArr = users.map((v: any) => {
+        return {
+          name: v.name,
+          profilePicture: v.profilePicture.withoutVersion,
+          _id: v._id,
+          username: v.username,
+        }
+      })
+      const groupDetails = {
+        isGroup: users.length > 1 ? true : false,
+        groupName: users.length > 1 ? `group-${Date.now()}` : '',
+      }
+      console.log(groupDetails)
       inbox = await Inbox.create({
         participants: [
           {
@@ -33,12 +71,7 @@ export const inboxAndChatsByUserId = async (req: Request, res: Response) => {
             //@ts-ignore
             username: req.jwtPayload.username,
           },
-          {
-            name: user.name,
-            profilePicture: user.profilePicture.withoutVersion,
-            _id: req.params.userId,
-            username: user.username,
-          },
+          ...inboxParticipantsArr,
         ],
         lastActivity: {
           chat_id: new Types.ObjectId(),
@@ -47,20 +80,24 @@ export const inboxAndChatsByUserId = async (req: Request, res: Response) => {
           //@ts-ignore
           sentBy: req.jwtPayload._id,
         },
+        group: groupDetails,
       })
     }
 
     // adding online status of participants
-    const rooms = io.of('/').adapter.rooms
-    const participants = inbox.participants.map((participant: any) => {
-      return {
-        ...participant.toObject(),
-        online: rooms.has(participant._id.toString()),
+    // no online status if group
+    if (!inbox.group.isGroup) {
+      const rooms = io.of('/').adapter.rooms
+      const participants = inbox.participants.map((participant: any) => {
+        return {
+          ...participant.toObject(),
+          online: rooms.has(participant._id.toString()),
+        }
+      })
+      inbox = {
+        ...inbox.toObject(),
+        participants,
       }
-    })
-    inbox = {
-      ...inbox.toObject(),
-      participants,
     }
     res.send({ inbox, chats })
   } catch (err) {

@@ -6,6 +6,7 @@ import {
 } from '../utils/utilVariables'
 
 const inboxSchema = new mongoose.Schema({
+  // all participants._id should be unique
   participants: [
     {
       name: stringRequired,
@@ -21,6 +22,13 @@ const inboxSchema = new mongoose.Schema({
     // TODO: use Enums in message status
     messageStatus: stringRequired,
     sentBy: objectIdRequired,
+  },
+  group: {
+    isGroup: {
+      type: Boolean,
+      required: true,
+    },
+    groupName: String,
   },
 })
 

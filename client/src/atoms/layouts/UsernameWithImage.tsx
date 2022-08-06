@@ -12,6 +12,8 @@ export const UsernameWithImage = ({ image, username, className }: any) => {
 export const UsernameWithImageGroup = ({
   image1,
   image2,
+  imageWidth,
+  imageGroupContainerWidth,
   groupName,
   className,
 }: any) => {
@@ -40,9 +42,14 @@ export const NameUsernameWithImage = ({
   )
 }
 
-export const ImageGroup = ({ image1, image2, imageWidth }: any) => {
+export const ImageGroup = ({
+  image1,
+  image2,
+  imageWidth,
+  containerWidth,
+}: any) => {
   return (
-    <StyledImageGroup imageWidth={imageWidth}>
+    <StyledImageGroup {...{ imageWidth, containerWidth }}>
       <Image1 src={image1} alt="" />
       <Image2 src={image2} alt="" />
     </StyledImageGroup>
@@ -85,7 +92,7 @@ const StyledImageGroup: any = styled.div`
     width: ${({ imageWidth }: any) => imageWidth};
   }
   aspect-ratio: 1/1;
-  width: 56px;
+  width: ${({ containerWidth }: any) => containerWidth};
   ${Image2} {
     border: 2px solid #fff;
     position: absolute;

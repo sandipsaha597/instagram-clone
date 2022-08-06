@@ -1,16 +1,17 @@
-import { useEffect, useState } from 'react'
 import axios from 'axios'
+import { useEffect, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import styled from 'styled-components'
 import { Button, Button2 } from '../atoms/Buttons/Buttons'
-import Navbar from '../molecules/Navbar'
-import { modifyInboxes, transformCloudinaryImage } from '../utils/utilFunctions'
+import {
+  getAndSetInbox,
+  transformCloudinaryImage,
+} from '../utils/utilFunctions'
 import { DOMAIN } from '../utils/utilVariables'
 import { Container } from './../atoms/Boxes/Container'
-import { useNavigate, useParams } from 'react-router-dom'
-import produce from 'immer'
-import { socket } from '../SocketIO'
 const ProfilePage = ({ userDetails, setChats, inboxes, setInboxes }: any) => {
   const [profileDetails, setProfileDetails] = useState<any>()
+  const [messageButtonDisabled, setMessageButtonDisabled] = useState(false)
 
   const params = useParams()
   const navigate = useNavigate()
@@ -24,54 +25,6 @@ const ProfilePage = ({ userDetails, setChats, inboxes, setInboxes }: any) => {
       }
     })()
   }, [params.username])
-
-  const getInbox = async () => {
-    // if the inbox already exist in the inboxes state... then just splice it from there
-    const existingInbox = inboxes.find((v: any) => {
-      return (
-        v.participants.length === 1 &&
-        v.participants[0]._id === profileDetails._id
-      )
-    })
-
-    let inboxId = existingInbox?._id
-    if (existingInbox) {
-      setInboxes((inboxes: any) => {
-        return produce(inboxes, (draft: any) => {
-          const inboxIndex = draft.findIndex((v: any) => v._id === inboxId)
-          draft.splice(inboxIndex, 1)
-          draft.unshift(existingInbox)
-        })
-      })
-    } else {
-      // get inbox and chats by userId
-      const profileDetailsId = profileDetails._id
-      const response = await axios.get(`${DOMAIN}/inbox/${profileDetailsId}`)
-      const { inbox, chats: fetchedChats } = response.data
-      // subscribe to online status
-      socket.emit(
-        'subscribe-online-status',
-        {
-          userId: profileDetailsId,
-        },
-        () => false
-      )
-      inboxId = inbox._id
-      setInboxes((inboxes: any) => {
-        return produce(inboxes, (draft: any) => {
-          const modifiedInbox = modifyInboxes([inbox], userDetails._id)[0]
-          draft.unshift(modifiedInbox)
-        })
-      })
-      setChats((chats: any) => {
-        return produce(chats, (draft: any) => {
-          draft.loading = false
-          draft[inboxId] = fetchedChats
-        })
-      })
-    }
-    navigate(`/inbox/${inboxId}`)
-  }
 
   if (!profileDetails?.username) return <h1>Loading...</h1>
   return (
@@ -91,8 +44,25 @@ const ProfilePage = ({ userDetails, setChats, inboxes, setInboxes }: any) => {
             <h2>{profileDetails.username}</h2>
             {userDetails.username !== profileDetails.username && (
               <>
-                <Button2 onClick={getInbox}>Message</Button2>
-                <Button widthAuto>Follow</Button>
+                <Button2
+                  disabled={messageButtonDisabled}
+                  onClick={() => {
+                    setMessageButtonDisabled(true)
+                    getAndSetInbox(
+                      [profileDetails._id],
+                      userDetails,
+                      inboxes,
+                      setInboxes,
+                      setChats,
+                      navigate
+                    )
+                  }}
+                >
+                  Message
+                </Button2>
+                <Button disabled widthAuto>
+                  Follow
+                </Button>
               </>
             )}
           </div>
