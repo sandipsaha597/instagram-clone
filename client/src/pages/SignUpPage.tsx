@@ -5,7 +5,7 @@ import Logo from '../atoms/IconsAndImages/Logo'
 import { LinkText, SubHeading, Text1 } from '../atoms/Text/Texts'
 import SignUpForm from '../molecules/SignUpForm'
 
-const SignUpPage = () => {
+const SignUpPage = ({ setUserDetails }: any) => {
   return (
     <StyledSignUpPage>
       <ScreenSlideShow></ScreenSlideShow>
@@ -17,7 +17,7 @@ const SignUpPage = () => {
           </SubHeading>
           {/* <Button>facebook logo Log in with Facebook</Button> */}
           <Or />
-          <SignUpForm />
+          <SignUpForm {...{ setUserDetails }} />
         </BorderedBox>
         <BorderedBox className="bottom">
           <Text1>

@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { useEffect, useRef, useState } from 'react'
+import { forwardRef, useEffect, useRef, useState } from 'react'
 import styled from 'styled-components'
 import { Button } from '../atoms/Buttons/Buttons'
 import { CropIcon, UploadImageVideoIcon } from '../atoms/Icons/Icons'
@@ -7,7 +7,7 @@ import { UsernameWithImage } from '../atoms/layouts/UsernameWithImage'
 import { transformCloudinaryImage } from '../utils/utilFunctions'
 import { DOMAIN } from '../utils/utilVariables'
 
-const AddPost = ({ userDetails }: any) => {
+const AddPost = forwardRef(({ userDetails }: any) => {
   const inputRef = useRef<any>(null)
   const captionRef = useRef<any>(null)
   const [files, setFiles] = useState<string[]>([])
@@ -18,6 +18,9 @@ const AddPost = ({ userDetails }: any) => {
   //     setFiles([])
   //   }
   // }, [])
+  useEffect(() => {
+    alert('PLEASE NOTE: this feature is incomplete')
+  }, [])
   const getDataUrlsOfFiles = () => {
     const blobFiles = inputRef.current.files
     let tempFiles = new Array(blobFiles.length).fill('')
@@ -50,7 +53,7 @@ const AddPost = ({ userDetails }: any) => {
     } catch (err) {
       console.log(err)
       alert('Failed to share post')
-      setHeadingText('Crop')
+      setHeadingText('Create new post')
     }
   }
   return (
@@ -106,7 +109,7 @@ const AddPost = ({ userDetails }: any) => {
       </Body>
     </StyledAddPost>
   )
-}
+})
 
 export default AddPost
 const PostImage = styled.img`

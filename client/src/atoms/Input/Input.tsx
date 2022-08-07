@@ -1,20 +1,19 @@
 import { useState } from 'react'
 import styled from 'styled-components'
-import { border } from '../../utils/utilVariables'
 
 //@ts-ignore
-const Input: any = ({ label, name, setFormValue, values }) => {
+const Input: any = ({ label, name, type, values, required }) => {
   const [value, setValue] = useState('')
   return (
     <InputBox className="input-box">
       <Label inputValue={value}>{label}</Label>
       <StyledInput
-        type="text"
         value={value}
+        type={type || 'text'}
+        required={required}
         onChange={(e) => {
           setValue(e.target.value)
           values.current[name] = e.target.value
-          // setFormValue(name, e.target.value)
         }}
       />
     </InputBox>
@@ -28,10 +27,13 @@ const InputBox = styled.div`
 `
 const Label = styled.label<{ inputValue: string }>`
   color: rgb(142, 142, 142);
-  left: 9px;
-  top: 50%;
-  position: absolute;
   font-size: 12px;
+  left: 9px;
+  pointer-events: none;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  transition: 0.1s ease-out;
   ${({ inputValue }) =>
     inputValue &&
     `
@@ -39,8 +41,6 @@ const Label = styled.label<{ inputValue: string }>`
     top: 27%;
     font-size: 10px;
   `}
-  transform: translateY(-50%);
-  transition: 0.1s ease-out;
 `
 const StyledInput = styled.input`
   background-color: #fafafa;

@@ -53,7 +53,6 @@ const DirectMessagePage = ({
       })
     })
   }, [userDetails._id, setInboxes])
-  console.log(inboxes)
   useEffect(() => {
     socket.off('online-status')
     socket.on('online-status', (data: any) => {
@@ -119,7 +118,7 @@ const DirectMessagePage = ({
       })
       return temp
     } catch (err) {
-      console.log(err)
+      console.error(err)
       navigate('/inbox', { replace: true })
     }
     return temp

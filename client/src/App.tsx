@@ -4,7 +4,7 @@ import './App.css'
 import { Outlet } from 'react-router-dom'
 import Navbar from './molecules/Navbar'
 //@ts-ignore
-const App: any = ({ userDetails, setUserDetails }) => {
+const App: any = ({ userDetails, setUserDetails, emptyAllStates }) => {
   return (
     <StyledApp>
       {/* <div className="nav">home</div>
@@ -16,7 +16,7 @@ const App: any = ({ userDetails, setUserDetails }) => {
         illum perferendis sequi suscipit itaque dolorum quasi. Nihil rem natus
         eos hic! lorem1000
       </div> */}
-      <Navbar userDetails={userDetails} setUserDetails={setUserDetails} />
+      <Navbar {...{ userDetails, setUserDetails, emptyAllStates }} />
       <UserData>
         <h1>{userDetails.username}</h1>
         <p>{userDetails._id}</p>

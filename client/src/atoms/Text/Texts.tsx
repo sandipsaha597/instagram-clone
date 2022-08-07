@@ -9,6 +9,7 @@ export const SubHeading = styled.div`
   text-align: center;
 `
 export const LinkText = styled(Link)<any>`
+  color: #0095f6;
   font-size: inherit;
   font-weight: ${({ $bold }) => ($bold ? 'bold' : 'normal')};
 `

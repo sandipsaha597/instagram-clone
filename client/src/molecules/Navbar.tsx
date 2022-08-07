@@ -1,68 +1,112 @@
+import { Modal } from '@mui/material'
 import axios from 'axios'
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, NavLink, useNavigate } from 'react-router-dom'
 import styled from 'styled-components'
 import Backdrop from '../atoms/Backdrop/Backdrop'
 import { Container } from '../atoms/Boxes/Container'
+import { Button, Button2 } from '../atoms/Buttons/Buttons'
 import {
   AddPostIcon,
   DirectMessageIcon,
+  DirectMessageIconActive,
+  HomeIcon,
   HomeIconActive,
   ProfileImg,
 } from '../atoms/Icons/Icons'
 import Logo from '../atoms/IconsAndImages/Logo'
+import { LinkText } from '../atoms/Text/Texts'
 import { socket } from '../SocketIO'
 import { DOMAIN } from '../utils/utilVariables'
 import AddPost from './AddPost'
 
-const Navbar = ({ userDetails, setUserDetails }: any) => {
+const Navbar = ({ userDetails, emptyAllStates }: any) => {
   const [modalHidden, setModalHidden] = useState(true)
-  const [sendPostModalHidden, setSendPostModalHidden] = useState(true)
+  const [addPostModalOpen, setAddPostModalOpen] = useState(false)
   return (
     <StyledNavbar>
       <StyledContainer>
         <Logo />
         <Right>
           <ul>
-            <li>
-              <Link to="/">
-                <HomeIconActive />
-              </Link>
-            </li>
-            <li>
-              <Link to="/inbox">
-                <DirectMessageIcon />
-              </Link>
-            </li>
-            <li>
-              <button onClick={() => setSendPostModalHidden((state) => !state)}>
-                <AddPostIcon />
-              </button>
-            </li>
+            {!userDetails ? (
+              <>
+                <li>
+                  <Link to="/accounts/login">
+                    <Button widthAuto>Log In</Button>
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/accounts/signup">
+                    <Button2>Sign Up</Button2>
+                  </Link>
+                </li>
+              </>
+            ) : (
+              <>
+                <li>
+                  <NavLink to="/">
+                    {({ isActive }) =>
+                      isActive ? <HomeIconActive /> : <HomeIcon />
+                    }
+                  </NavLink>
+                </li>
+                <li>
+                  <NavLink to="/inbox">
+                    {({ isActive }) =>
+                      isActive ? (
+                        <DirectMessageIconActive />
+                      ) : (
+                        <DirectMessageIcon />
+                      )
+                    }
+                  </NavLink>
+                </li>
+                <li>
+                  <button
+                    onClick={() => setAddPostModalOpen((state) => !state)}
+                  >
+                    <AddPostIcon />
+                  </button>
+                </li>
+                <ModalButtonWrapper
+                  as="li"
+                  className="modal-button"
+                  active={modalHidden}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setModalHidden((state) => !state)}
+                  >
+                    {/* <ProfileImg src={userDetails.profilePicture.withVersion} /> */}
+                    <ProfileImg src="https://res.cloudinary.com/dbevmtl8a/image/upload/w_24/v1650475415/users/instagram-clone-default-dp_qilu7c" />
+                  </button>
+                  <ProfilePopOver
+                    hidden={modalHidden}
+                    {...{ userDetails, emptyAllStates }}
+                  />
+                </ModalButtonWrapper>
+              </>
+            )}
             {/* <li>Explore</li>
           <li>notifications</li> */}
-            <ModalButtonWrapper className="modal-button" active={modalHidden}>
-              <button
-                type="button"
-                onClick={() => setModalHidden((state) => !state)}
-              >
-                {/* <ProfileImg src={userDetails.profilePicture.withVersion} /> */}
-                <ProfileImg src="https://res.cloudinary.com/dbevmtl8a/image/upload/w_24/v1650475415/users/instagram-clone-default-dp_qilu7c" />
-              </button>
-              <Modal
-                setUserDetails={(e: boolean) => setUserDetails(e)}
-                hidden={modalHidden}
-                userDetails={userDetails}
-              />
-            </ModalButtonWrapper>
           </ul>
         </Right>
       </StyledContainer>
-      {!sendPostModalHidden && (
-        <Backdrop close={() => setSendPostModalHidden(false)}>
-          <AddPost userDetails={userDetails} />
-        </Backdrop>
-      )}
+      {/* {addPostModalOpen && ( */}
+      {/* //{' '}
+      <Backdrop close={() => setAddPostModalOpen(false)}>
+        // <AddPost userDetails={userDetails} />
+        //{' '} */}
+      {/* </Backdrop> */}
+      <Modal
+        open={addPostModalOpen}
+        // open={true}
+        onClose={() => setAddPostModalOpen(false)}
+      >
+        <AddPost userDetails={userDetails} />
+      </Modal>
+      {/* )} */}
     </StyledNavbar>
   )
 }
@@ -105,13 +149,13 @@ const Right = styled.div`
   }
 `
 
-const Modal = ({ hidden, userDetails, setUserDetails }: any) => {
+const ProfilePopOver = ({ hidden, userDetails, emptyAllStates }: any) => {
   const navigate = useNavigate()
   const logout = async (e: any) => {
     e.preventDefault()
     try {
       await axios.get(`${DOMAIN}/logout`)
-      setUserDetails(false)
+      emptyAllStates()
       socket.disconnect()
       navigate('/')
     } catch (err) {

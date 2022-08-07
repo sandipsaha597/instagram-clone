@@ -37,10 +37,13 @@ const LoginForm = ({ setUserDetails }) => {
       )
       if (response.data._id) {
         setUserDetails(response.data)
-        navigate(from, { replace: true })
+        // console.log('from', from)
+        // navigate(from, { replace: true })
+        navigate('/inbox', { replace: true })
       }
     } catch (err) {
       console.log(err)
+      alert('invalid credentials')
     }
   }
   return (

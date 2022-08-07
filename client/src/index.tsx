@@ -24,6 +24,14 @@ const Index = () => {
   )
   const [inboxes, setInboxes] = useState<any>([])
   const [chats, setChats] = useState<any>({})
+
+  const emptyAllStates = () => {
+    console.log('emptyAllStates')
+    setInboxes([])
+    setChats({})
+    setUserDetails(false)
+  }
+
   useEffect(() => {
     ;(async () => {
       try {
@@ -81,12 +89,13 @@ const Index = () => {
             />
           }
         />
-        <Route path="accounts/signup" element={<SignUpPage />} />
+        <Route
+          path="accounts/signup"
+          element={<SignUpPage {...{ setUserDetails }} />}
+        />
       </Route>
       <Route
-        element={
-          <App userDetails={userDetails} setUserDetails={setUserDetails} />
-        }
+        element={<App {...{ userDetails, setUserDetails, emptyAllStates }} />}
       >
         <Route
           path=":username"
@@ -156,8 +165,11 @@ reportWebVitals()
 
 const NoAuth = ({ children, userDetails }: any) => {
   console.log('noauth', userDetails)
-  if (userDetails) {
-    return <Navigate to="/" replace />
+
+  const location: any = useLocation()
+  console.log('location.state', location.state)
+  if (userDetails && !location.state) {
+    return <Navigate to="/inbox" replace />
   }
 
   return children

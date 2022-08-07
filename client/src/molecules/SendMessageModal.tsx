@@ -3,7 +3,14 @@ import Button from '@mui/material/Button'
 import Modal from '@mui/material/Modal'
 import axios from 'axios'
 import produce from 'immer'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import styled from 'styled-components'
 import Chip from '../atoms/Chip/Chip'
 import {
@@ -131,6 +138,7 @@ const SendMessageModal = ({
             />
           </SearchAndSelectedContainer>
         </SearchAndSelectedArea>
+
         {searchResults === 'loading' ? (
           <h1>Loading...</h1>
         ) : searchResults === 'no results' ? (

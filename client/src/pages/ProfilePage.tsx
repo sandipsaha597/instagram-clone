@@ -150,9 +150,10 @@ const StyledContainer = styled(Container)`
 const Posts = styled(Container)`
   display: flex;
   flex-flow: row wrap;
+  text-align: center;
   div {
-    aspect-ratio: 1/1;
     width: 293px;
+    height: 293px;
     margin-right: 28px;
     margin-bottom: 28px;
   }

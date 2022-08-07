@@ -65,7 +65,7 @@ export const signup = async (req: Request, res: Response) => {
   try {
     const { name, username, email, password, profilePicture } = req.body
     if (!(name && username && email && password)) {
-      return res.status(400).send('All fields are required')
+      return res.status(400).send({ message: 'All fields are required' })
     }
 
     const existingUser = await User.findOne({
@@ -73,7 +73,7 @@ export const signup = async (req: Request, res: Response) => {
     })
 
     if (existingUser) {
-      return res.status(400).send('User already exists')
+      return res.status(400).send({ message: 'User already exists' })
     }
 
     let encryptedPassword = await bcrypt.hash(password, 10)
@@ -128,7 +128,7 @@ export const signup = async (req: Request, res: Response) => {
   } catch (e) {
     console.log(e)
 
-    res.status(500).send('failed to signup')
+    res.status(500).send({ message: 'failed to signup' })
   }
 
   //create token
