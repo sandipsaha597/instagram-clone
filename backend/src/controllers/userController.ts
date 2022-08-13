@@ -1,11 +1,14 @@
 import { Request, Response } from 'express'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
-import cloudinary from 'cloudinary'
+import cloudinary, { UploadApiOptions } from 'cloudinary'
 const cloudinaryV2 = cloudinary.v2
 import User from '../models/user'
 import { defaultProfilePicture } from '../utils/utilVariables'
 import { cookieOptions } from '../utils/utilFunctions'
+
+const instagramDefaultDP =
+  'https://res.cloudinary.com/dbevmtl8a/image/upload/v1660379523/users/instagram-clone-default-dp'
 
 export const userDetails = async (req: Request, res: Response) => {
   try {
@@ -14,7 +17,10 @@ export const userDetails = async (req: Request, res: Response) => {
     // @ts-ignore
     if (!!req.searchUserBy && Object.keys(req.searchUserBy)) {
       //@ts-ignore
-      const user = await User.findOne(req.searchUserBy)
+      const user = await User.findOne(req.searchUserBy, {
+        password: 0,
+        email: 0,
+      })
       if (user) {
         return res.send(user)
       }
@@ -27,9 +33,89 @@ export const userDetails = async (req: Request, res: Response) => {
   }
 }
 
+export const changeProfilePicture = async (req: Request, res: Response) => {
+  console.log('change profile picture')
+  try {
+    // @ts-ignore
+    const userId = req.jwtPayload._id
+    const incomingProfilePicture = req.body.profilePicture
+
+    if (!(incomingProfilePicture && typeof incomingProfilePicture === 'string'))
+      return res.status(400).send({ message: 'invalid profile picture' })
+
+    const { _id, profilePicture: userCurrentProfilePicture } =
+      await User.findOne({ _id: userId }, { profilePicture: 1 })
+
+    if (!_id) return res.status(400).send({ message: 'user does not exist' })
+
+    const uploadOptions: UploadApiOptions = {
+      public_id: userCurrentProfilePicture.cloudinaryImagePublicId,
+      folder: 'users',
+      allowed_formats: ['jpg', 'png', 'webp'],
+      transformation: { width: 320, height: 320, crop: 'fill' },
+      invalidate: true,
+    }
+
+    const result = await cloudinaryV2.uploader.upload(
+      incomingProfilePicture,
+      uploadOptions
+    )
+
+    console.log(result)
+    // update profile picture details of the user
+    const updated = await User.findOneAndUpdate(
+      { _id },
+      {
+        $set: {
+          'profilePicture.withVersion': result.secure_url,
+        } as any,
+      },
+      { returnDocument: 'after', projection: { profilePicture: 1 } }
+    )
+    console.log(updated)
+    res.send(updated)
+  } catch (err) {
+    console.error(err)
+  }
+}
+
+export const removeProfilePicture = async (req: Request, res: Response) => {
+  console.log('remove profile picture')
+  try {
+    // @ts-ignore
+    const userId = req.jwtPayload._id
+    const { _id, profilePicture: userCurrentProfilePicture } =
+      await User.findOne({ _id: userId }, { profilePicture: 1 })
+    if (!_id) return res.status(400).send('user does not exist')
+    const uploadOptions: UploadApiOptions = {
+      public_id: userCurrentProfilePicture.cloudinaryImagePublicId,
+      folder: 'users',
+      allowed_formats: ['jpg', 'png', 'webp'],
+      invalidate: true,
+    }
+    let result = await cloudinaryV2.uploader.upload(
+      instagramDefaultDP,
+      uploadOptions
+    )
+    const updated = await User.findOneAndUpdate(
+      { _id: userId },
+      {
+        $set: {
+          'profilePicture.withVersion': result.secure_url,
+        } as any,
+      },
+      { returnDocument: 'after', projection: { profilePicture: 1 } }
+    )
+    res.send(updated)
+  } catch (err) {
+    console.error(err)
+  }
+}
+
 export const login = async (req: Request, res: Response) => {
   try {
-    const { username, email, password } = req.body
+    const { username: rawUsername, email, password } = req.body
+    const username = rawUsername.toLowerCase()
     if (!((username || email) && password))
       return res.status(400).send('All fields are required')
 
@@ -51,6 +137,7 @@ export const login = async (req: Request, res: Response) => {
         }
       )
       user.password = undefined
+      user.email = undefined
 
       return res.status(200).cookie('token', token, cookieOptions()).send(user)
     }
@@ -63,18 +150,24 @@ export const login = async (req: Request, res: Response) => {
 
 export const signup = async (req: Request, res: Response) => {
   try {
-    const { name, username, email, password, profilePicture } = req.body
-    if (!(name && username && email && password)) {
+    const { name, username: rawUsername, email, password } = req.body
+    if (!(name && rawUsername && email && password)) {
       return res.status(400).send({ message: 'All fields are required' })
     }
+    const username = rawUsername.toLowerCase()
 
-    const existingUser = await User.findOne({
-      $or: [{ email }, { username }],
-    })
+    const existingUser = await User.findOne(
+      {
+        $or: [{ email }, { username }],
+      },
+      { _id: 1 }
+    )
 
     if (existingUser) {
       return res.status(400).send({ message: 'User already exists' })
     }
+
+    // TODO: use joi or some other schema validation
 
     let encryptedPassword = await bcrypt.hash(password, 10)
     const tempUserObj: {
@@ -85,6 +178,7 @@ export const signup = async (req: Request, res: Response) => {
       profilePicture?: {
         withVersion: string
         withoutVersion: string
+        cloudinaryImagePublicId: string
       }
     } = {
       name,
@@ -92,20 +186,18 @@ export const signup = async (req: Request, res: Response) => {
       email,
       password: encryptedPassword,
     }
-    if (profilePicture && typeof profilePicture === 'string') {
-      let result = await cloudinaryV2.uploader.upload(profilePicture, {
-        folder: 'users',
-        allowed_formats: ['jpg', 'png', 'webp'],
-      })
-      const withoutVersion = result.secure_url.replace(
-        `v${result.version}/`,
-        ''
-      )
-      tempUserObj.profilePicture = {
-        withVersion: result.secure_url,
-        withoutVersion,
-      }
+    let result = await cloudinaryV2.uploader.upload(instagramDefaultDP, {
+      folder: 'users',
+      allowed_formats: ['jpg', 'png', 'webp'],
+    })
+    const withoutVersion = removeVersionFromCloudinaryImage(result)
+    const cloudinaryImagePublicId = getPublicId(result.public_id)
+    tempUserObj.profilePicture = {
+      withVersion: result.secure_url,
+      withoutVersion,
+      cloudinaryImagePublicId,
     }
+
     const user = await User.create(tempUserObj)
 
     const { JWT_SECRET } = process.env
@@ -115,7 +207,8 @@ export const signup = async (req: Request, res: Response) => {
         email,
         _id: user._id,
         name,
-        profilePicture: defaultProfilePicture,
+        // storing profile picture without version
+        profilePicture: withoutVersion,
       },
       JWT_SECRET as string,
       {
@@ -137,3 +230,10 @@ export const signup = async (req: Request, res: Response) => {
 export const logout = async (req: Request, res: Response) => {
   res.status(204).clearCookie('token').send()
 }
+
+const getPublicId = (str: string) => {
+  const splittedArr = str.split('/')
+  return splittedArr[splittedArr.length - 1]
+}
+const removeVersionFromCloudinaryImage = (result: any) =>
+  result.secure_url.replace(`v${result.version}/`, '')

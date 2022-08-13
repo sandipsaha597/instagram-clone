@@ -70,7 +70,7 @@ const AddPost = forwardRef(({ userDetails }: any) => {
         <FileInput
           type="file"
           ref={inputRef}
-          multiple
+          // multiple
           onChange={() => getDataUrlsOfFiles()}
         />
         {files.length ? (
@@ -113,8 +113,8 @@ const AddPost = forwardRef(({ userDetails }: any) => {
 
 export default AddPost
 const PostImage = styled.img`
-  aspect-ratio: 1/1;
   width: 523px;
+  height: 523px;
   object-fit: cover;
 `
 const ImageAndCaption = styled.div`
@@ -187,8 +187,8 @@ const Body = styled.div<any>`
   justify-content: center;
   align-items: ${({ haveFiles }) => (haveFiles ? 'flex-start' : 'center')};
   flex-direction: ${({ haveFiles }) => (haveFiles ? 'row' : 'column')};
-  aspect-ratio: ${({ haveFiles }) => (haveFiles ? 'auto' : '1/1')};
   width: ${({ haveFiles }) => (haveFiles ? 'auto' : '523px')};
+  height: ${({ haveFiles }) => (haveFiles ? 'auto' : '523px')};
   /* height: 71vh; */
   font-weight: 300;
   padding: ${({ haveFiles }) => (haveFiles ? '0' : '0 24px')};

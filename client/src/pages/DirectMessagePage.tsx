@@ -260,7 +260,6 @@ const Inbox: any = styled(NavLink)`
       border-radius: 50%;
     }
     &::after {
-      aspect-ratio: 1/1;
       background: ${({ $online }: any) => ($online ? '#78de45' : '#c4c4c4')};
       border: 4px solid #fff;
       border-radius: 50%;
@@ -270,6 +269,7 @@ const Inbox: any = styled(NavLink)`
       bottom: 0;
       right: 0;
       width: 13px;
+      height: 13px;
     }
   }
   ${InboxName} {

@@ -6,6 +6,7 @@ exports.connect = () => {
     .connect(MONGODB_URL || '', {
       useNewUrlParser: true,
       useUnifiedTopology: true,
+      // useFindAndModify: false,
     } as ConnectOptions)
     .then(() => {
       console.log('Connected to MongoDB')

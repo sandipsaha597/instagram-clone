@@ -100,7 +100,14 @@ const Index = () => {
         <Route
           path=":username"
           element={
-            <ProfilePage {...{ userDetails, setChats, inboxes, setInboxes }} />
+            <ProfilePage
+              {...{
+                userDetails,
+                setChats,
+                inboxes,
+                setInboxes,
+              }}
+            />
           }
         />
         <Route path="/somepost" element={<>post some</>} />

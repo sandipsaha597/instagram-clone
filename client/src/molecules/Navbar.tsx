@@ -17,6 +17,7 @@ import {
 import Logo from '../atoms/IconsAndImages/Logo'
 import { LinkText } from '../atoms/Text/Texts'
 import { socket } from '../SocketIO'
+import { transformCloudinaryImage } from '../utils/utilFunctions'
 import { DOMAIN } from '../utils/utilVariables'
 import AddPost from './AddPost'
 
@@ -78,8 +79,12 @@ const Navbar = ({ userDetails, emptyAllStates }: any) => {
                     type="button"
                     onClick={() => setModalHidden((state) => !state)}
                   >
-                    {/* <ProfileImg src={userDetails.profilePicture.withVersion} /> */}
-                    <ProfileImg src="https://res.cloudinary.com/dbevmtl8a/image/upload/w_24/v1650475415/users/instagram-clone-default-dp_qilu7c" />
+                    <ProfileImg
+                      src={transformCloudinaryImage(
+                        userDetails.profilePicture.withVersion,
+                        'w_24'
+                      )}
+                    />
                   </button>
                   <ProfilePopOver
                     hidden={modalHidden}
@@ -143,8 +148,8 @@ const Right = styled.div`
     position: relative;
     > button {
       border-radius: 50%;
+      width: 24px;
       height: 24px;
-      aspect-ratio: 1/1;
     }
   }
 `
@@ -190,9 +195,9 @@ const Card = styled.div`
   background: #ffffff;
   z-index: 3;
   .arrow {
-    aspect-ratio: 1/1;
     /* box-shadow: 0 0 5px 1px rgba(0, 0, 0, 0.0975); */
     width: 14px;
+    height: 14px;
     position: absolute;
     background: #fff;
     top: -6px;

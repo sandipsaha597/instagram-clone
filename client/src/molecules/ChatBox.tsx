@@ -524,6 +524,9 @@ const Chat: any = styled.div`
   ${EmptyBox} {
     margin-right: 8px;
   }
+  .profile-pic {
+    border-radius: 50%;
+  }
   .chat-wrapper {
     background: ${({ chatSentByUser }: any) =>
       chatSentByUser ? 'rgb(239, 239, 239)' : 'transparent'};

@@ -44,7 +44,7 @@ const SignUpForm = ({ setUserDetails }: any) => {
       setUserDetails(response.data)
     } catch (err: any) {
       console.error(err)
-      alert(err.response.data.message)
+      alert(err?.response?.data?.message)
     }
   }
   return (

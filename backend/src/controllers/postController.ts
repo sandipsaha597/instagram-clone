@@ -11,8 +11,6 @@ export const createPost = async (req: Request, res: Response) => {
     const { caption, images } = req.body
     if (images.length < 1) return res.status(400).send('no image was sent')
     // @ts-expect-error
-    console.log(req.searchUserBy.username)
-    // @ts-expect-error
     if (req?.searchUserBy.username) {
       const tempPostObj: any = {
         //@ts-ignore
@@ -31,9 +29,7 @@ export const createPost = async (req: Request, res: Response) => {
       } else {
         return res.status(400).send('failed')
       }
-      console.log('running')
       const post = await Post.create(tempPostObj)
-      console.log(post)
       res.status(201).send(post)
       return
     }
@@ -182,6 +178,7 @@ const uploadImages = async (images: string[]) => {
           .upload(image, {
             folder: 'images',
             allowed_formats: ['jpg', 'png', 'webp'],
+            transformation: { width: 706 },
           })
           .then((v: cloudinary.UploadApiResponse) => {
             imageArray[i].url = v.secure_url

@@ -62,6 +62,9 @@ const StyledUsernameWithImage = styled.div`
   > * {
     margin-right: 12px;
   }
+  img {
+    border-radius: 50%;
+  }
 `
 const Right = styled.div`
   display: flex;
@@ -87,14 +90,15 @@ const Image2 = styled.img``
 const StyledImageGroup: any = styled.div`
   position: relative;
   img {
-    aspect-ratio: 1/1;
     border-radius: 50%;
     width: ${({ imageWidth }: any) => imageWidth};
+    height: ${({ imageWidth }: any) => imageWidth};
   }
-  aspect-ratio: 1/1;
   width: ${({ containerWidth }: any) => containerWidth};
+  height: ${({ containerWidth }: any) => containerWidth};
   ${Image2} {
     border: 2px solid #fff;
+    border-radius: 50%;
     position: absolute;
     bottom: 0;
     right: 0;

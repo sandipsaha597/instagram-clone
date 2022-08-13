@@ -122,7 +122,6 @@ export const DirectMessageIconActive = () => (
 )
 export const ProfileImg = styled.img`
   border-radius: 50%;
-  aspect-ratio: 1 / 1;
 `
 export const AddPostIcon = () => (
   <svg

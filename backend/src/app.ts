@@ -29,6 +29,7 @@ import userRoute from './routes/user'
 import Inbox from './models/inbox'
 import Chat from './models/chat'
 import searchRoute from './routes/searchUser'
+import User from './models/user'
 const app: Application = express()
 app.use(cors(corsOptions))
 app.use(express.json({ limit: '20mb' }))
@@ -111,19 +112,45 @@ app.use('/api', followUnfollowRoute)
 app.use('/api', profilePageRoute)
 app.use('/api', searchRoute)
 
-app.delete('/deleteImage', async (req: Request, res: Response) => {
-  const destroyAll = () => {
-    // if (destroyImagesUponFail.count === images.length) {
-    // @ts-ignore
-    cloudinary.uploader
-      .destroy('images/wjkyahqruhabtctugxsc')
-      .then((v: any) => {
-        console.log(v)
-      })
-      .catch((err: any) => console.error(err))
-  }
-  // }
-  destroyAll()
-})
+// app.put(
+//   '/api/normalize/set-profile-picture-default-and-publicId',
+//   async (req, res) => {
+//     console.log('request')
+//     const output = await User.updateMany([
+//       {
+//         $addFields: {
+//           'profilePicture.cloudinaryImagePublicId':
+//             'instagram-clone-default-dp',
+//         } as any,
+//       },
+//     ])
+//     // const output = await User.updateMany({}, {
+//     //   $unset: 'profilePicture.publicId',
+//     // } as any)
+//     // const output = await User.updateMany([
+//     //   {
+//     //     $unset: ['profilePicture.publicId'],
+//     //   },
+//     // ])
+
+//     console.log(output)
+//     res.send('done')
+//   }
+// )
+
+// app.delete('/deleteImage', async (req: Request, res: Response) => {
+//   const destroyAll = () => {
+//     // if (destroyImagesUponFail.count === images.length) {
+//     // @ts-ignore
+//     cloudinary.uploader
+//       .destroy('images/wjkyahqruhabtctugxsc')
+//       .then((v: any) => {
+//         console.log(v)
+//       })
+//       .catch((err: any) => console.error(err))
+//   }
+//   // }
+//   destroyAll()
+// })
 
 export default app
