@@ -43,7 +43,7 @@ cloudinaryV2.config({
 
 // TODO: express server and socket.io server should be served from the same port
 //socket.io
-export const io = new Server(4001, { cors: corsOptions })
+export const io = new Server(8081, { cors: corsOptions })
 io.use(authInSocketIO)
 
 io.on('connection', async (socket) => {
