@@ -7,7 +7,7 @@ exports.connect = () => {
       useNewUrlParser: true,
       useUnifiedTopology: true,
       // useFindAndModify: false,
-      dbName: 'instagram_clone',
+      dbName: 'instagram-clone',
     } as ConnectOptions)
     .then(() => {
       console.log('Connected to MongoDB')

@@ -31,6 +31,7 @@ import Chat from './models/chat'
 import searchRoute from './routes/searchUser'
 import User from './models/user'
 const app: Application = express()
+console.log(corsOptions)
 app.use(cors(corsOptions))
 app.use(express.json({ limit: '20mb' }))
 app.use(cookieParser())
