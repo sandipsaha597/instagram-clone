@@ -8,7 +8,7 @@ import SignUpForm from '../molecules/SignUpForm'
 const SignUpPage = ({ setUserDetails }: any) => {
   return (
     <StyledSignUpPage>
-      <ScreenSlideShow></ScreenSlideShow>
+      {/* <ScreenSlideShow></ScreenSlideShow> */}
       <Right>
         <BorderedBox className="right">
           <Logo />
